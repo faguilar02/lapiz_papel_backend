@@ -22,15 +22,19 @@ import { CpeModule } from './cpe/cpe.module';
     ConfigModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST,
-      port: +process.env.DB_PORT,
-      database: process.env.DB_NAME,
-      username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
+      host: process.env.DB_HOST || process.env.DATABASE_HOST,
+      port: +process.env.DB_PORT || +(process.env.DATABASE_PORT || '5432'),
+      database: process.env.DB_NAME || process.env.DATABASE_NAME,
+      username: process.env.DB_USERNAME || process.env.DATABASE_USER,
+      password: process.env.DB_PASSWORD || process.env.DATABASE_PASSWORD,
       ssl:
-        process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+        process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production'
+          ? { rejectUnauthorized: false }
+          : false,
       autoLoadEntities: true,
       synchronize: true,
+      retryAttempts: 10,
+      retryDelay: 3000,
     }),
     AuthModule,
     CategoriesModule,
