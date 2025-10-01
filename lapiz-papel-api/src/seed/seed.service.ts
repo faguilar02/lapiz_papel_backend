@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -496,7 +496,7 @@ export class SeedService {
 
       if (existing) {
         this.logger.warn('⚠️ Company settings already exist, updating...');
-        
+
         // Update existing record
         Object.assign(existing, {
           business_name: 'ESQUIVEL GARCIA ROXANA EMPERATRIZ',
@@ -517,12 +517,13 @@ export class SeedService {
           debit_note_correlative: 1,
           default_currency: 'PEN',
           default_igv_rate: 18.0,
-          logo_base64: '',
+          logo_base64:
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAMAAAAMCGV4AAAABlBMVEX///8AAABVwtN+AAAAAXRSTlMAQObYZgAAADJJREFUeJxjYGBgYGRgYGJgYmBhYGFgZWBlYGNgY2BnYGdgZ+BgYGdgZ2Bn4GBgZwAABxkAOT4DKKgAAAAASUVORK5CYII=',
           is_active: true,
         });
 
         const updated = await this.companySettingsRepository.save(existing);
-        
+
         return {
           message: '✅ Company settings updated successfully',
           data: updated,
@@ -552,7 +553,8 @@ export class SeedService {
         debit_note_correlative: 1,
         default_currency: 'PEN',
         default_igv_rate: 18.0,
-        logo_base64: '',
+        logo_base64:
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAMAAAAMCGV4AAAABlBMVEX///8AAABVwtN+AAAAAXRSTlMAQObYZgAAADJJREFUeJxjYGBgYGRgYGJgYmBhYGFgZWBlYGNgY2BnYGdgZ+BgYGdgZ2Bn4GBgZwAABxkAOT4DKKgAAAAASUVORK5CYII=',
         is_active: true,
       });
 
@@ -577,6 +579,46 @@ export class SeedService {
     } catch (error) {
       this.logger.error('❌ Error inserting company settings:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Actualiza solo el logo de la empresa
+   */
+  async updateCompanyLogo(logoBase64: string) {
+    try {
+      const companySettings = await this.companySettingsRepository.findOne({
+        where: { id: '4f378e51-1cd0-43a3-ba8b-fd3f2510672c' },
+      });
+
+      if (!companySettings) {
+        throw new BadRequestException(
+          'Company settings not found. Create company settings first.',
+        );
+      }
+
+      // Actualizar solo el logo
+      companySettings.logo_base64 = logoBase64;
+      const updated = await this.companySettingsRepository.save(
+        companySettings,
+      );
+
+      this.logger.log('✅ Company logo updated successfully');
+
+      return {
+        message: '✅ Company logo updated successfully',
+        data: {
+          id: updated.id,
+          logo_updated: true,
+          updated_at: new Date(),
+        },
+        action: 'logo_updated',
+      };
+    } catch (error) {
+      this.logger.error('❌ Error updating company logo', error.stack);
+      throw new BadRequestException(
+        `Error updating company logo: ${error.message}`,
+      );
     }
   }
 }

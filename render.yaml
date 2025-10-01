@@ -42,7 +42,7 @@ services:
         value: "false"
       # External APIs
       - key: PERU_DEVS_API_KEY
-        sync: false  # Sync from Render Dashboard (add it manually there)
+        sync: false # Sync from Render Dashboard (add it manually there)
       # JWT Secret
       - key: JWT_SECRET
         generateValue: true

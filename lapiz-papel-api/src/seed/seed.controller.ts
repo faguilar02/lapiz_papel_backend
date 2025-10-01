@@ -1,4 +1,12 @@
-import { Controller, Get, Delete, Post, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Delete,
+  Post,
+  Put,
+  UseGuards,
+  Body,
+} from '@nestjs/common';
 import { SeedService } from './seed.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RoleProtected } from '../auth/decorators/role-protected.decorator';
@@ -26,5 +34,12 @@ export class SeedController {
   @RoleProtected(UserRole.ADMIN)
   async clearAllData() {
     return this.seedService.clearAllData();
+  }
+
+  @Put('update-logo')
+  @UseGuards(AuthGuard(), UserRoleGuard)
+  @RoleProtected(UserRole.ADMIN)
+  async updateCompanyLogo(@Body() body: { logo_base64: string }) {
+    return this.seedService.updateCompanyLogo(body.logo_base64);
   }
 }
