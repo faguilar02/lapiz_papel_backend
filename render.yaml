@@ -1,13 +1,9 @@
 services:
   - type: web
-    name: lapiz-papel# Managed Postgres on Render
-# Note: Render's managed Postgres regions: oregon, frankfurt, singapore (as of now).
-# If ohio is not supported for DB, it will be created in oregon and the app can still connect over TLS.
-databases:
-  - name: lapiz-papel-db
-    plan: free    env: docker
+    name: lapiz-papel-api
+    env: docker
     plan: free
-    region: ohio # closest to US East; Render regions: oregon, frankfurt, singapore, ohio
+    region: ohio
     rootDir: ./lapiz-papel-api
     dockerfilePath: ./Dockerfile.prod
     healthCheckPath: /api/health
@@ -44,14 +40,11 @@ databases:
         value: "false"
       - key: SUNAT_ENABLED
         value: "false"
-      # Optional providers
+      # JWT Secret
       - key: JWT_SECRET
         generateValue: true
-      # Add CLOUDINARY_* if you use Cloudinary
 
-# Managed Postgres on Render
-# Note: Render’s managed Postgres regions: oregon, frankfurt, singapore (as of now).
-# If ohio is not supported for DB, it will be created in oregon and the app can still connect over TLS.
+# Managed PostgreSQL Database
 databases:
   - name: lapiz-papel-db
-    plan: starter
+    plan: free
