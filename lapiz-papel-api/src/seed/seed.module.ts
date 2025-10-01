@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { PassportModule } from '@nestjs/passport';
 import { SeedService } from './seed.service';
 import { SeedController } from './seed.controller';
 
@@ -23,6 +24,7 @@ import { InventoryMovement } from '../inventory/entities/inventory-movement.enti
 
 @Module({
   imports: [
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     SalesModule,
     TypeOrmModule.forFeature([
       User,
