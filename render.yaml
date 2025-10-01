@@ -6,7 +6,7 @@ services:
     region: ohio # closest to US East; Render regions: oregon, frankfurt, singapore, ohio
     rootDir: ./lapiz-papel-api
     dockerfilePath: ./Dockerfile.prod
-  healthCheckPath: /api/health
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
@@ -16,20 +16,25 @@ services:
         value: "true"
       # Database connection
       - key: DB_HOST
-        fromDatabase: lapiz-papel-db
-        property: host
+        fromDatabase:
+          name: lapiz-papel-db
+          property: host
       - key: DB_PORT
-        fromDatabase: lapiz-papel-db
-        property: port
+        fromDatabase:
+          name: lapiz-papel-db
+          property: port
       - key: DB_NAME
-        fromDatabase: lapiz-papel-db
-        property: database
+        fromDatabase:
+          name: lapiz-papel-db
+          property: database
       - key: DB_USERNAME
-        fromDatabase: lapiz-papel-db
-        property: user
+        fromDatabase:
+          name: lapiz-papel-db
+          property: user
       - key: DB_PASSWORD
-        fromDatabase: lapiz-papel-db
-        property: password
+        fromDatabase:
+          name: lapiz-papel-db
+          property: password
       # Feature flags
       - key: XADES_ENABLED
         value: "false"
