@@ -14,11 +14,11 @@ services:
         value: 3000
       - key: DB_SSL
         value: "true"
-      # Database connection
+      # Database connection - Internal hostname for faster connection
       - key: DB_HOST
         fromDatabase:
           name: lapiz-papel-db
-          property: host
+          property: hostInternal
       - key: DB_PORT
         fromDatabase:
           name: lapiz-papel-db
