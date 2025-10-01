@@ -1,4 +1,5 @@
 import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
+import { TransformEmptyToNull } from '../../common/decorators/transform-empty-to-null.decorator';
 
 export class CreateCategoryDto {
   @IsString()
@@ -9,5 +10,6 @@ export class CreateCategoryDto {
   @IsOptional()
   @IsString()
   @MaxLength(500)
-  description?: string;
+  @TransformEmptyToNull()
+  description?: string | null;
 }

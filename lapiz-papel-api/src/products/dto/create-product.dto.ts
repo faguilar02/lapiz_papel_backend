@@ -10,6 +10,7 @@ import {
   IsUrl,
   Min,
 } from 'class-validator';
+import { TransformEmptyToNull } from '../../common/decorators/transform-empty-to-null.decorator';
 
 export class CreateProductDto {
   @IsString()
@@ -22,7 +23,8 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsUUID()
-  category_id?: string;
+  @TransformEmptyToNull()
+  category_id?: string | null;
 
   @IsOptional()
   @IsString()

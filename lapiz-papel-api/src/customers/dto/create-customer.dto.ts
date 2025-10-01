@@ -7,6 +7,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { DocumentType } from '../entities/customer.entity';
+import { TransformEmptyToNull } from '../../common/decorators/transform-empty-to-null.decorator';
 
 export class CreateCustomerDto {
   @IsString()
@@ -25,7 +26,8 @@ export class CreateCustomerDto {
 
   @IsOptional()
   @IsEmail()
-  email?: string;
+  @TransformEmptyToNull()
+  email?: string | null;
 
   @IsOptional()
   @IsString()
