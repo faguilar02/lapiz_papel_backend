@@ -1,0 +1,22 @@
+FROM node:20-alpine
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Instalar herramientas de desarrollo
+RUN npm install -g @nestjs/cli
+
+# Copiar archivos de dependencias
+COPY package*.json ./
+
+# Instalar todas las dependencias (incluyendo dev)
+RUN npm ci
+
+# Copiar código fuente
+COPY . .
+
+# Exponer puerto
+EXPOSE 3000
+
+# Comando de desarrollo con hot reload
+CMD ["npm", "run", "start:dev"]

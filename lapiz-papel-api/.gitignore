@@ -1,0 +1,93 @@
+# compiled output
+/dist
+/node_modules
+/build
+.env
+/postgres
+/*.md
+ENDPOINTS_DOCUMENTATION.md
+FRONTEND_CODE_EXAMPLES.md
+TYPESCRIPT_TYPES.md
+API_DOCUMENTATION_FOR_FRONTEND.md
+postman
+/*.js
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+
+# Tests
+/coverage
+/.nyc_output
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+.envrc
+
+# Certificates / secrets (do not commit)
+certs/
+**/certs/
+*.pem
+*.cer
+*.crt
+*.key
+*.p12
+*.pfx
+*.jks
+keystore.*
+truststore.*
+
+# DB dumps / backups
+*.sql
+*.sql.gz
+*.dump
+*.pg_dump
+dump.sql
+backups/
+
+# Caches
+.eslintcache
+.cache/
+
+# Other lockfiles
+bun.lockb
+
+# temp directory
+.temp
+.tmp
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

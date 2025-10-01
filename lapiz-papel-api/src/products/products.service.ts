@@ -1,0 +1,537 @@
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Not } from 'typeorm';
+import { Product } from './entities/product.entity';
+import { ProductImage } from './entities/product-image.entity';
+import { ProductBulkPrice } from './entities/product-bulk-price.entity';
+import { CreateProductDto, UpdateProductDto, SearchProductsDto } from './dto';
+import {
+  CreateProductImageDto,
+  UpdateProductImageDto,
+} from './dto/product-image.dto';
+import { CreateBulkPriceDto } from './dto/create-bulk-price.dto';
+import { PaginationDto } from '../auth/dto';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { PaginatedResponse } from '../auth/interfaces/paginated-response.interface';
+import { createPaginatedResponse } from '../auth/utils/pagination.helper';
+
+@Injectable()
+export class ProductsService {
+  constructor(
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
+    @InjectRepository(ProductImage)
+    private readonly productImageRepository: Repository<ProductImage>,
+    @InjectRepository(ProductBulkPrice)
+    private readonly bulkPriceRepository: Repository<ProductBulkPrice>,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  async create(createProductDto: CreateProductDto): Promise<Product> {
+    try {
+      const product = this.productRepository.create(createProductDto);
+      return await this.productRepository.save(product);
+    } catch (error) {
+      if (error.code === '23505') {
+        // Unique constraint violation
+        throw new ConflictException('Product SKU already exists');
+      }
+      throw error;
+    }
+  }
+
+  async findAll(
+    searchDto: SearchProductsDto,
+  ): Promise<PaginatedResponse<Product>> {
+    const { search, category_id, limit = 10, offset = 0 } = searchDto;
+
+    console.log('🔍 Products Service: findAll called with:', searchDto);
+
+    const queryBuilder = this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .addSelect('product.is_active')
+      .orderBy('product.created_at', 'DESC');
+
+    // Filtro por búsqueda general
+    if (search) {
+      queryBuilder.andWhere(
+        '(product.name ILIKE :search OR product.sku ILIKE :search OR category.name ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    // Filtro por categoría
+    if (category_id) {
+      queryBuilder.andWhere('product.category_id = :category_id', {
+        category_id,
+      });
+    }
+
+    // NOTA: Ahora incluimos TODOS los productos, tanto activos como inactivos
+
+    const [data, total] = await queryBuilder
+      .take(limit)
+      .skip(offset)
+      .getManyAndCount();
+
+    console.log('🔍 Products Service: found', total, 'products');
+    return createPaginatedResponse(data, total, limit, offset);
+  }
+
+  async findOne(id: string): Promise<Product> {
+    const product = await this.productRepository.findOne({
+      where: { id },
+      relations: ['category', 'images', 'bulk_prices'],
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    return product;
+  }
+
+  async findBySku(sku: string): Promise<Product> {
+    const product = await this.productRepository.findOne({
+      where: { sku },
+      relations: ['category'],
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    return product;
+  }
+
+  async update(
+    id: string,
+    updateProductDto: UpdateProductDto,
+  ): Promise<Product> {
+    const product = await this.findOne(id);
+
+    try {
+      Object.assign(product, updateProductDto);
+      return await this.productRepository.save(product);
+    } catch (error) {
+      if (error.code === '23505') {
+        throw new ConflictException('Product SKU already exists');
+      }
+      throw error;
+    }
+  }
+
+  async remove(id: string): Promise<void> {
+    const product = await this.findOne(id);
+    product.is_active = false;
+    await this.productRepository.save(product);
+  }
+
+  async activate(id: string): Promise<Product> {
+    const product = await this.findOne(id);
+    product.is_active = true;
+    return await this.productRepository.save(product);
+  }
+
+  async deactivate(id: string): Promise<Product> {
+    const product = await this.findOne(id);
+    product.is_active = false;
+    return await this.productRepository.save(product);
+  }
+
+  async updateStock(id: string, quantity: number): Promise<Product> {
+    const product = await this.findOne(id);
+
+    const newStock = product.stock_quantity + quantity;
+    if (newStock < 0) {
+      throw new BadRequestException('Insufficient stock');
+    }
+
+    product.stock_quantity = newStock;
+    return await this.productRepository.save(product);
+  }
+
+  async search(
+    query: string,
+    limit: number = 10,
+    offset: number = 0,
+  ): Promise<PaginatedResponse<Product>> {
+    console.log('🔍 Service: search called with query:', query);
+
+    const queryBuilder = this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .where('product.is_active = :isActive', { isActive: true })
+      .andWhere(
+        '(product.name ILIKE :query OR product.sku ILIKE :query OR category.name ILIKE :query)',
+        { query: `%${query}%` },
+      )
+      .orderBy('product.created_at', 'DESC');
+
+    const [data, total] = await queryBuilder
+      .take(limit)
+      .skip(offset)
+      .getManyAndCount();
+
+    console.log('🔍 Service: search found', total, 'products');
+    return createPaginatedResponse(data, total, limit, offset);
+  }
+
+  async getLowStock(
+    paginationDto: PaginationDto,
+  ): Promise<PaginatedResponse<Product>> {
+    const { limit = 20, offset = 0 } = paginationDto;
+
+    console.log('📉 Products Service: getLowStock called with:', paginationDto);
+
+    const [data, total] = await this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+      .where('product.stock_quantity <= product.minimum_stock')
+      .andWhere('product.is_active = :isActive', { isActive: true })
+      .orderBy('product.stock_quantity', 'ASC') // Los más críticos primero
+      .take(limit)
+      .skip(offset)
+      .getManyAndCount();
+
+    console.log('📉 Products Service: found', total, 'low stock products');
+    return createPaginatedResponse(data, total, limit, offset);
+  }
+
+  // Image management methods
+  async uploadProductImage(
+    productId: string,
+    file: Express.Multer.File,
+    createImageDto: CreateProductImageDto,
+  ): Promise<ProductImage> {
+    // Verify product exists
+    await this.findOne(productId);
+
+    // Upload to Cloudinary
+    const uploadResult = await this.cloudinaryService.uploadImage(file);
+
+    // If this is set as primary, unset other primary images
+    if (createImageDto.is_primary) {
+      await this.productImageRepository.update(
+        { product_id: productId, is_primary: true },
+        { is_primary: false },
+      );
+    }
+
+    // Create image record
+    const productImage = this.productImageRepository.create({
+      product_id: productId,
+      image_url: uploadResult.secure_url,
+      public_id: uploadResult.public_id,
+      alt_text: createImageDto.alt_text,
+      is_primary: createImageDto.is_primary || false,
+      sort_order: createImageDto.sort_order || 0,
+    });
+
+    return await this.productImageRepository.save(productImage);
+  }
+
+  async getProductImages(productId: string): Promise<ProductImage[]> {
+    await this.findOne(productId); // Verify product exists
+
+    return await this.productImageRepository.find({
+      where: { product_id: productId },
+      order: { sort_order: 'ASC', created_at: 'ASC' },
+    });
+  }
+
+  async updateProductImage(
+    imageId: string,
+    updateImageDto: UpdateProductImageDto,
+  ): Promise<ProductImage> {
+    const image = await this.productImageRepository.findOne({
+      where: { id: imageId },
+    });
+
+    if (!image) {
+      throw new NotFoundException('Image not found');
+    }
+
+    // If setting as primary, unset other primary images for this product
+    if (updateImageDto.is_primary) {
+      await this.productImageRepository.update(
+        { product_id: image.product_id, is_primary: true },
+        { is_primary: false },
+      );
+    }
+
+    Object.assign(image, updateImageDto);
+    return await this.productImageRepository.save(image);
+  }
+
+  async deleteProductImage(imageId: string): Promise<void> {
+    const image = await this.productImageRepository.findOne({
+      where: { id: imageId },
+    });
+
+    if (!image) {
+      throw new NotFoundException('Image not found');
+    }
+
+    // Delete from Cloudinary
+    try {
+      await this.cloudinaryService.deleteImage(image.public_id);
+    } catch (error) {
+      console.error('Error deleting from Cloudinary:', error);
+      // Continue with database deletion even if Cloudinary fails
+    }
+
+    // Delete from database
+    await this.productImageRepository.remove(image);
+  }
+
+  async setPrimaryImage(imageId: string): Promise<ProductImage> {
+    const image = await this.productImageRepository.findOne({
+      where: { id: imageId },
+    });
+
+    if (!image) {
+      throw new NotFoundException('Image not found');
+    }
+
+    // Unset other primary images for this product
+    await this.productImageRepository.update(
+      { product_id: image.product_id, is_primary: true },
+      { is_primary: false },
+    );
+
+    // Set this image as primary
+    image.is_primary = true;
+    return await this.productImageRepository.save(image);
+  }
+
+  // Bulk price methods
+  async addBulkPrice(
+    productId: string,
+    createBulkPriceDto: CreateBulkPriceDto,
+  ): Promise<ProductBulkPrice> {
+    const product = await this.findOne(productId);
+
+    // Verificar que no exista un precio para la misma cantidad
+    const existingBulkPrice = await this.bulkPriceRepository.findOne({
+      where: {
+        product_id: productId,
+        min_quantity: createBulkPriceDto.min_quantity,
+        is_active: true,
+      },
+    });
+
+    if (existingBulkPrice) {
+      throw new ConflictException(
+        `A bulk price already exists for quantity: ${createBulkPriceDto.min_quantity}`,
+      );
+    }
+
+    const bulkPrice = this.bulkPriceRepository.create({
+      ...createBulkPriceDto,
+      product_id: productId,
+    });
+
+    return await this.bulkPriceRepository.save(bulkPrice);
+  }
+
+  async updateBulkPrice(
+    id: string,
+    updateBulkPriceDto: CreateBulkPriceDto,
+  ): Promise<ProductBulkPrice> {
+    const bulkPrice = await this.bulkPriceRepository.findOne({
+      where: { id },
+    });
+
+    if (!bulkPrice) {
+      throw new NotFoundException('Bulk price not found');
+    }
+
+    // Verificar que no exista otro precio para la misma cantidad (excepto el actual)
+    const existingBulkPrice = await this.bulkPriceRepository.findOne({
+      where: {
+        product_id: bulkPrice.product_id,
+        min_quantity: updateBulkPriceDto.min_quantity,
+        id: Not(id),
+        is_active: true,
+      },
+    });
+
+    if (existingBulkPrice) {
+      throw new ConflictException(
+        'A bulk price for this quantity already exists',
+      );
+    }
+
+    Object.assign(bulkPrice, updateBulkPriceDto);
+    return await this.bulkPriceRepository.save(bulkPrice);
+  }
+
+  async removeBulkPrice(id: string): Promise<void> {
+    const bulkPrice = await this.bulkPriceRepository.findOne({
+      where: { id },
+    });
+
+    if (!bulkPrice) {
+      throw new NotFoundException('Bulk price not found');
+    }
+
+    // Soft delete
+    bulkPrice.is_active = false;
+    await this.bulkPriceRepository.save(bulkPrice);
+  }
+
+  async getBulkPrices(productId: string): Promise<ProductBulkPrice[]> {
+    await this.findOne(productId); // Verify product exists
+
+    return await this.bulkPriceRepository.find({
+      where: {
+        product_id: productId,
+        is_active: true,
+      },
+      order: { min_quantity: 'ASC' },
+    });
+  }
+
+  async getApplicableBulkPrice(
+    productId: string,
+    quantity: number,
+  ): Promise<any> {
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      throw new BadRequestException('Quantity must be a positive integer');
+    }
+
+    const product = await this.findOne(productId);
+    if (!product.is_active) {
+      throw new BadRequestException('Product is not active');
+    }
+
+    // Formatear precios base
+    const base_prices = {
+      sale_unit_price: Number(product.sale_price).toFixed(2),
+      cost_unit_price: Number(product.cost_price).toFixed(2),
+    };
+
+    // Buscar tier con cantidad exacta
+    const exactTier = await this.bulkPriceRepository
+      .createQueryBuilder('bulk_price')
+      .where('bulk_price.product_id = :productId', { productId })
+      .andWhere('bulk_price.min_quantity = :quantity', { quantity })
+      .andWhere('bulk_price.is_active = :isActive', { isActive: true })
+      .getOne();
+
+    // Si hay tier exacto
+    if (exactTier) {
+      const sale_unit_price_effective = (
+        Number(exactTier.sale_bundle_total) / quantity
+      ).toFixed(2);
+      const cost_unit_price_effective = (
+        Number(exactTier.cost_bundle_total) / quantity
+      ).toFixed(2);
+
+      return {
+        product_id: productId,
+        quantity_requested: quantity,
+        base_prices,
+        tier_applied: {
+          id: exactTier.id,
+          min_quantity: exactTier.min_quantity,
+          pricing_mode: exactTier.pricing_mode,
+          sale_bundle_total: exactTier.sale_bundle_total,
+          cost_bundle_total: exactTier.cost_bundle_total,
+        },
+        effective_prices: {
+          sale_unit_price_effective,
+          cost_unit_price_effective,
+        },
+        totals: {
+          sale_total: exactTier.sale_bundle_total,
+          cost_total: exactTier.cost_bundle_total,
+        },
+        price_source: 'tier_exact',
+      };
+    }
+
+    // Si no hay tier exacto, usar precios base
+    const sale_total = (Number(product.sale_price) * quantity).toFixed(2);
+    const cost_total = (Number(product.cost_price) * quantity).toFixed(2);
+
+    return {
+      product_id: productId,
+      quantity_requested: quantity,
+      base_prices,
+      tier_applied: null,
+      effective_prices: {
+        sale_unit_price_effective: base_prices.sale_unit_price,
+        cost_unit_price_effective: base_prices.cost_unit_price,
+      },
+      totals: {
+        sale_total,
+        cost_total,
+      },
+      price_source: 'base',
+    };
+  }
+
+  // Helper method para calcular el precio de venta total considerando precios por volumen
+  async calculateTotalSalePrice(
+    productId: string,
+    quantity: number,
+  ): Promise<{
+    totalPrice: number;
+    appliedBulkPrice?: ProductBulkPrice;
+    message?: string;
+  }> {
+    const product = await this.findOne(productId);
+    const { bulkPrice, message } = await this.getApplicableBulkPrice(
+      productId,
+      quantity,
+    );
+
+    if (bulkPrice) {
+      return {
+        totalPrice: bulkPrice.sale_price * quantity,
+        appliedBulkPrice: bulkPrice,
+        message,
+      };
+    }
+
+    return {
+      totalPrice: product.sale_price * quantity,
+    };
+  }
+
+  // Helper method para calcular el precio de compra total considerando precios por volumen
+  async calculateTotalCostPrice(
+    productId: string,
+    quantity: number,
+  ): Promise<{
+    totalPrice: number;
+    appliedBulkPrice?: ProductBulkPrice;
+    message?: string;
+  }> {
+    const product = await this.findOne(productId);
+    const { bulkPrice, message } = await this.getApplicableBulkPrice(
+      productId,
+      quantity,
+    );
+
+    if (bulkPrice) {
+      return {
+        totalPrice: bulkPrice.cost_price * quantity,
+        appliedBulkPrice: bulkPrice,
+        message,
+      };
+    }
+
+    return {
+      totalPrice: product.cost_price * quantity,
+    };
+  }
+}

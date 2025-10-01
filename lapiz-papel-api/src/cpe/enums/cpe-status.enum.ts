@@ -1,0 +1,8 @@
+export enum CpeStatus {
+  PENDING = 'PENDING',
+  SENT = 'SENT',
+  ACCEPTED = 'ACCEPTED',
+  OBSERVED = 'OBSERVED',
+  REJECTED = 'REJECTED',
+  ERROR = 'ERROR',
+}
