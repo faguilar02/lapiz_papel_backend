@@ -116,7 +116,7 @@ export class ProductsController {
 
   // Image management endpoints
   @Post(':id/images')
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   @UseInterceptors(FileInterceptor('image'))
   async uploadImage(
     @Param('id', ParseUUIDPipe) id: string,

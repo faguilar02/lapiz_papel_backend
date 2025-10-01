@@ -234,7 +234,16 @@ export class ProductsService {
       sort_order: createImageDto.sort_order || 0,
     });
 
-    return await this.productImageRepository.save(productImage);
+    const savedImage = await this.productImageRepository.save(productImage);
+
+    // If this is primary image, also update the main product image_url
+    if (createImageDto.is_primary) {
+      await this.productRepository.update(productId, {
+        image_url: uploadResult.secure_url,
+      });
+    }
+
+    return savedImage;
   }
 
   async getProductImages(productId: string): Promise<ProductImage[]> {
