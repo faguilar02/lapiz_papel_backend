@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: lapiz-papel-api
+    env: docker
+    plan: starter
+    region: ohio # closest to US East; Render regions: oregon, frankfurt, singapore, ohio
+    rootDir: ./lapiz-papel-api
+    dockerfilePath: ./Dockerfile.prod
+  healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DB_SSL
+        value: "true"
+      # Database connection
+      - key: DB_HOST
+        fromDatabase: lapiz-papel-db
+        property: host
+      - key: DB_PORT
+        fromDatabase: lapiz-papel-db
+        property: port
+      - key: DB_NAME
+        fromDatabase: lapiz-papel-db
+        property: database
+      - key: DB_USERNAME
+        fromDatabase: lapiz-papel-db
+        property: user
+      - key: DB_PASSWORD
+        fromDatabase: lapiz-papel-db
+        property: password
+      # Feature flags
+      - key: XADES_ENABLED
+        value: "false"
+      - key: SUNAT_ENABLED
+        value: "false"
+      # Optional providers
+      - key: JWT_SECRET
+        generateValue: true
+      # Add CLOUDINARY_* if you use Cloudinary
+
+# Managed Postgres on Render
+# Note: Render’s managed Postgres regions: oregon, frankfurt, singapore (as of now).
+# If ohio is not supported for DB, it will be created in oregon and the app can still connect over TLS.
+databases:
+  - name: lapiz-papel-db
+    plan: starter

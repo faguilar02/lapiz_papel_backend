@@ -1,0 +1,88 @@
+########################################
+# General Node / Nest
+########################################
+node_modules/
+dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+########################################
+# Env files (no secretos en el repo)
+########################################
+.env
+*.env
+.env.*
+.envrc
+.env.local
+.env.production.local
+.env.development.local
+.env.test.local
+
+########################################
+# Datos locales de Postgres
+########################################
+postgres/
+lapiz-papel-api/postgres/
+
+########################################
+# Certificados / llaves (sensibles)
+########################################
+certs/
+**/certs/
+*.p12
+*.pem
+*.key
+*.crt
+*.pfx
+*.jks
+keystore.*
+truststore.*
+
+########################################
+# Salidas de build Java
+########################################
+xades-signer/target/
+*.class
+.mvn/wrapper/maven-wrapper.jar
+
+########################################
+# Caches de test y herramientas
+########################################
+coverage/
+.nyc_output/
+.cache/
+.eslintcache
+
+########################################
+# Dumps / backups de DB
+########################################
+*.sql
+*.sql.gz
+*.dump
+*.pg_dump
+dump.sql
+backups/
+
+########################################
+# IDE / tooling
+########################################
+.vscode/
+.idea/
+.project
+.classpath
+.settings/
+.history
+*.swp
+*.swo
+
+########################################
+# Archivos de sistema
+########################################
+.DS_Store
+Thumbs.db

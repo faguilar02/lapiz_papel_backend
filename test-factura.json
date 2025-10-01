@@ -1,0 +1,30 @@
+{
+  "customer": {
+    "docType": "6",
+    "docNumber": "20604051984",
+    "name": "CLIENTE DE PRUEBA SAC",
+    "address": "AV. PRUEBA NRO. 123",
+    "ubigeo": "150101",
+    "distrito": "LIMA",
+    "provincia": "LIMA",
+    "departamento": "LIMA"
+  },
+  "items": [
+    {
+      "description": "PRODUCTO DE PRUEBA COMPLETO",
+      "quantity": 1,
+      "unitCode": "NIU",
+      "unitPrice": 118.0,
+      "taxAffectation": "10",
+      "includesIgv": true,
+      "productCode": "PROD001",
+      "sunatCode": "46171606"
+    }
+  ],
+  "currency": "PEN",
+  "includesIgv": true,
+  "currencyId": 2,
+  "paymentType": "Contado",
+  "notes": "Factura de prueba para SUNAT",
+  "dueDate": "2025-09-30"
+}

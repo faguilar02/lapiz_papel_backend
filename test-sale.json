@@ -1,0 +1,17 @@
+{
+  "customer_id": "5e40e00f-5a3d-4c9c-84f5-fd27e728e284",
+  "subtotal": 100,
+  "includes_igv": true,
+  "igv_rate": 0.18,
+  "total_amount": 118,
+  "payment_method": "cash",
+  "receipt_type": "factura",
+  "notes": "Venta de prueba para CPE automático - FACTURA",
+  "items": [
+    {
+      "product_id": "6a4fd2d4-2b97-4024-a17d-98e40189973c",
+      "quantity": 2,
+      "unit_price": 45.99
+    }
+  ]
+}

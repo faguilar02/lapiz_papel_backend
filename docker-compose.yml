@@ -1,0 +1,78 @@
+services:
+  # === Servicio de firma (Java) SOLO en red interna ===
+  xades-signer:
+    build:
+      context: ./xades-signer
+      dockerfile: Dockerfile
+    container_name: xades-signer
+    expose:
+      - "8080" # visible solo para la red del compose
+    environment:
+      - SERVER_PORT=8080
+      - LOGGING_LEVEL_ROOT=INFO
+      - LOGGING_LEVEL_COM_SUNAT_XADESSIGNER=DEBUG
+      # Alias "prod" -> Java leerá CERT_PROD_* al recibir keyAlias="prod"
+      - CERT_PROD_PATH=/app/certs/certificado.p12
+      - CERT_PROD_PASSWORD=${CERT_PROD_PASSWORD}
+    volumes:
+      - ./certs:/app/certs:ro # montamos los .p12 en solo lectura
+    restart: unless-stopped
+
+  # === Tu API Nest (publicada hacia fuera) ===
+  nest-api:
+    build:
+      context: ./lapiz-papel-api
+      dockerfile: Dockerfile.dev
+    container_name: lapiz-papel-api
+    depends_on:
+      - xades-signer
+      - db
+    volumes:
+      - ./lapiz-papel-api/src:/app/src:cached
+      - ./lapiz-papel-api/package.json:/app/package.json:ro
+      - /app/node_modules
+    environment:
+      # URL interna hacia el firmador (NO localhost)
+      - XADES_URL=http://xades-signer:8080
+      # Variables de DB
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USERNAME=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - NODE_ENV=development
+      # Auth y API Keys
+      - JWT_SECRET=${JWT_SECRET}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - PERU_DEVS_API_KEY=${PERU_DEVS_API_KEY}
+      # SUNAT Configuration para CPE
+      - SUNAT_RUC=${SUNAT_RUC}
+      - COMPANY_NAME=${COMPANY_NAME}
+      - SUNAT_ENV=${SUNAT_ENV}
+      - SUNAT_SOL_USER=${SUNAT_SOL_USER}
+      - SUNAT_SOL_PASSWORD=${SUNAT_SOL_PASSWORD}
+      - SUNAT_BETA_ENDPOINT=${SUNAT_BETA_ENDPOINT}
+      - SUNAT_PROD_ENDPOINT=${SUNAT_PROD_ENDPOINT}
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  # === Postgres ===
+  db:
+    image: postgres:14.3
+    container_name: lapizpapeldb
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    ports:
+      - "5433:5432" # cambiar puerto para evitar conflicto
+    restart: unless-stopped
+
+networks:
+  default:
+    name: backend_net # una sola red compartida

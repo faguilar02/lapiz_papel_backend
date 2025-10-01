@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  nest-api:
+    build:
+      context: ./lapiz-papel-api
+      dockerfile: Dockerfile.dev
+    volumes:
+      # Monta el código fuente para desarrollo
+      - ./lapiz-papel-api/src:/app/src:cached
+      - ./lapiz-papel-api/package.json:/app/package.json:ro
+      - ./lapiz-papel-api/tsconfig.json:/app/tsconfig.json:ro
+      - ./lapiz-papel-api/nest-cli.json:/app/nest-cli.json:ro
+      # Evita que node_modules se sobrescriba
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development

@@ -1,0 +1,25 @@
+{
+  "customer": {
+    "docType": "1",
+    "docNumber": "12345678",
+    "name": "JUAN PEREZ GARCIA",
+    "address": "AV. EXAMPLE 123",
+    "ubigeo": "130101",
+    "distrito": "SAN MARTIN DE PORRES",
+    "provincia": "LIMA",
+    "departamento": "LIMA"
+  },
+  "items": [
+    {
+      "description": "Producto de prueba",
+      "quantity": 1.0,
+      "unitCode": "NIU",
+      "unitPrice": 118.0,
+      "taxAffectation": "10",
+      "includesIgv": true,
+      "productCode": "PROD001"
+    }
+  ],
+  "currency": "PEN",
+  "includesIgv": true
+}
