@@ -1,8 +1,12 @@
 services:
   - type: web
-    name: lapiz-papel-api
-    env: docker
-    plan: starter
+    name: lapiz-papel# Managed Postgres on Render
+# Note: Render's managed Postgres regions: oregon, frankfurt, singapore (as of now).
+# If ohio is not supported for DB, it will be created in oregon and the app can still connect over TLS.
+databases:
+  - name: lapiz-papel-db
+    plan: free    env: docker
+    plan: free
     region: ohio # closest to US East; Render regions: oregon, frankfurt, singapore, ohio
     rootDir: ./lapiz-papel-api
     dockerfilePath: ./Dockerfile.prod
