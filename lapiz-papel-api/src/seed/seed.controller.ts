@@ -1,4 +1,4 @@
-import { Controller, Get, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Delete, Post, UseGuards } from '@nestjs/common';
 import { SeedService } from './seed.service';
 import { AuthGuard } from '@nestjs/passport';
 import { RoleProtected } from '../auth/decorators/role-protected.decorator';
@@ -12,6 +12,13 @@ export class SeedController {
   @Get()
   async runSeed() {
     return this.seedService.runSeed();
+  }
+
+  @Post('company-settings')
+  @UseGuards(AuthGuard(), UserRoleGuard)
+  @RoleProtected(UserRole.ADMIN)
+  async insertCompanySettings() {
+    return this.seedService.insertCompanySettings();
   }
 
   @Delete('clear-all')

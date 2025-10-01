@@ -15,6 +15,7 @@ import { Product } from '../products/entities/product.entity';
 import { Purchase } from '../purchases/entities/purchase.entity';
 import { PurchaseItem } from '../purchases/entities/purchase-item.entity';
 import { InventoryMovement } from '../inventory/entities/inventory-movement.entity';
+import { CompanySettings } from '../common/entities/company-settings.entity';
 
 // Enums
 import { UserRole } from '../auth/models/enums';
@@ -46,6 +47,8 @@ export class SeedService {
     private readonly purchaseItemRepository: Repository<PurchaseItem>,
     @InjectRepository(InventoryMovement)
     private readonly inventoryMovementRepository: Repository<InventoryMovement>,
+    @InjectRepository(CompanySettings)
+    private readonly companySettingsRepository: Repository<CompanySettings>,
   ) {}
 
   async runSeed() {
@@ -459,8 +462,10 @@ export class SeedService {
       }
 
       await queryRunner.commitTransaction();
-      
-      this.logger.warn(`🔥 ALL DATA CLEARED! Deleted ${deletedCount} total records`);
+
+      this.logger.warn(
+        `🔥 ALL DATA CLEARED! Deleted ${deletedCount} total records`,
+      );
 
       return {
         message: '⚠️ All database data has been cleared',
@@ -474,6 +479,104 @@ export class SeedService {
       throw error;
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  /**
+   * Insert Company Settings for LAPIZ Y PAPEL
+   */
+  async insertCompanySettings() {
+    this.logger.log('🏢 Inserting Company Settings...');
+
+    try {
+      // Check if company settings already exist
+      const existing = await this.companySettingsRepository.findOne({
+        where: { ruc: '10769359171' },
+      });
+
+      if (existing) {
+        this.logger.warn('⚠️ Company settings already exist, updating...');
+        
+        // Update existing record
+        Object.assign(existing, {
+          business_name: 'ESQUIVEL GARCIA ROXANA EMPERATRIZ',
+          trade_name: 'LAPIZ Y PAPEL',
+          ubigeo: '000000',
+          department: '-',
+          province: '-',
+          district: '-',
+          urbanization: null,
+          address: '-',
+          invoice_series: 'F001',
+          ticket_series: 'B001',
+          credit_note_series: 'BC01',
+          debit_note_series: 'BD01',
+          invoice_correlative: 21,
+          ticket_correlative: 3,
+          credit_note_correlative: 1,
+          debit_note_correlative: 1,
+          default_currency: 'PEN',
+          default_igv_rate: 18.0,
+          logo_base64: '',
+          is_active: true,
+        });
+
+        const updated = await this.companySettingsRepository.save(existing);
+        
+        return {
+          message: '✅ Company settings updated successfully',
+          data: updated,
+          action: 'updated',
+        };
+      }
+
+      // Create new company settings
+      const companySettings = this.companySettingsRepository.create({
+        id: '4f378e51-1cd0-43a3-ba8b-fd3f2510672c',
+        ruc: '10769359171',
+        business_name: 'ESQUIVEL GARCIA ROXANA EMPERATRIZ',
+        trade_name: 'LAPIZ Y PAPEL',
+        ubigeo: '000000',
+        department: '-',
+        province: '-',
+        district: '-',
+        urbanization: null,
+        address: '-',
+        invoice_series: 'F001',
+        ticket_series: 'B001',
+        credit_note_series: 'BC01',
+        debit_note_series: 'BD01',
+        invoice_correlative: 21,
+        ticket_correlative: 3,
+        credit_note_correlative: 1,
+        debit_note_correlative: 1,
+        default_currency: 'PEN',
+        default_igv_rate: 18.0,
+        logo_base64: '',
+        is_active: true,
+      });
+
+      const saved = await this.companySettingsRepository.save(companySettings);
+
+      this.logger.log('✅ Company settings inserted successfully');
+
+      return {
+        message: '✅ Company settings created successfully',
+        data: {
+          id: saved.id,
+          ruc: saved.ruc,
+          business_name: saved.business_name,
+          trade_name: saved.trade_name,
+          invoice_series: saved.invoice_series,
+          ticket_series: saved.ticket_series,
+          default_igv_rate: saved.default_igv_rate,
+          created_at: saved.created_at,
+        },
+        action: 'created',
+      };
+    } catch (error) {
+      this.logger.error('❌ Error inserting company settings:', error);
+      throw error;
     }
   }
 }
