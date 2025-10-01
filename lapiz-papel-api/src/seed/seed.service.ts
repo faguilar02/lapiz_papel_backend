@@ -411,4 +411,69 @@ export class SeedService {
         return ReceiptType.BOLETA;
     }
   }
+
+  /**
+   * ⚠️ DANGER ZONE: Clear ALL data from database
+   * This method will delete ALL records from ALL tables
+   * Use ONLY for testing/development cleanup
+   */
+  async clearAllData() {
+    this.logger.warn('🔥 CLEARING ALL DATABASE DATA...');
+
+    const queryRunner =
+      this.userRepository.manager.connection.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // Order is important: delete from child tables first (foreign key constraints)
+      const tablesToClean = [
+        'inventory_movements',
+        'sales_receipts',
+        'sale_items',
+        'sales',
+        'purchase_items',
+        'purchases',
+        'product_bulk_prices',
+        'product_images',
+        'products',
+        'suppliers',
+        'customers',
+        'categories',
+        'profiles', // Users table
+      ];
+
+      let deletedCount = 0;
+
+      for (const table of tablesToClean) {
+        try {
+          const result = await queryRunner.query(`DELETE FROM ${table}`);
+          const count = result[1] || 0; // PostgreSQL returns [result, count]
+          deletedCount += count;
+          this.logger.log(`✅ Deleted ${count} records from ${table}`);
+        } catch (error) {
+          this.logger.warn(
+            `⚠️ Could not clean table ${table}: ${error.message}`,
+          );
+        }
+      }
+
+      await queryRunner.commitTransaction();
+      
+      this.logger.warn(`🔥 ALL DATA CLEARED! Deleted ${deletedCount} total records`);
+
+      return {
+        message: '⚠️ All database data has been cleared',
+        deletedRecords: deletedCount,
+        clearedTables: tablesToClean,
+        warning: 'This action cannot be undone',
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error('❌ Error during data clearing:', error);
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }
