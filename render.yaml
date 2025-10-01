@@ -3,7 +3,7 @@ services:
     name: lapiz-papel-api
     env: docker
     plan: free
-    region: ohio
+    region: oregon
     rootDir: ./lapiz-papel-api
     dockerfilePath: ./Dockerfile.prod
     healthCheckPath: /api/health
@@ -14,11 +14,11 @@ services:
         value: 3000
       - key: DB_SSL
         value: "true"
-      # Database connection - Internal hostname for faster connection
+      # Database connection - Use external host
       - key: DB_HOST
         fromDatabase:
           name: lapiz-papel-db
-          property: hostInternal
+          property: host
       - key: DB_PORT
         fromDatabase:
           name: lapiz-papel-db
@@ -48,3 +48,4 @@ services:
 databases:
   - name: lapiz-papel-db
     plan: free
+    region: oregon
