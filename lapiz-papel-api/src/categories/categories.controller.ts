@@ -24,7 +24,7 @@ export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Post()
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   create(@Body() createCategoryDto: CreateCategoryDto) {
     return this.categoriesService.create(createCategoryDto);
   }
@@ -49,7 +49,7 @@ export class CategoriesController {
   }
 
   @Patch(':id')
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
@@ -58,19 +58,19 @@ export class CategoriesController {
   }
 
   @Delete(':id')
-  @Auth(UserRole.ADMIN)
+  @Auth(UserRole.ADMIN, UserRole.CASHIER)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.categoriesService.remove(id);
   }
 
   @Patch(':id/activate')
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   activate(@Param('id', ParseUUIDPipe) id: string) {
     return this.categoriesService.activate(id);
   }
 
   @Patch(':id/deactivate')
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   deactivate(@Param('id', ParseUUIDPipe) id: string) {
     return this.categoriesService.deactivate(id);
   }

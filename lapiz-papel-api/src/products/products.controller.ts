@@ -33,7 +33,7 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   create(@Body() createProductDto: CreateProductDto) {
     return this.productsService.create(createProductDto);
   }
@@ -94,7 +94,7 @@ export class ProductsController {
   }
 
   @Patch(':id')
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
@@ -103,19 +103,19 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @Auth(UserRole.ADMIN)
+  @Auth(UserRole.ADMIN, UserRole.CASHIER)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.remove(id);
   }
 
   @Patch(':id/activate')
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   activate(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.activate(id);
   }
 
   @Patch(':id/deactivate')
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   deactivate(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.deactivate(id);
   }
@@ -157,7 +157,7 @@ export class ProductsController {
   }
 
   @Patch('images/:imageId')
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   updateProductImage(
     @Param('imageId', ParseUUIDPipe) imageId: string,
     @Body() updateImageDto: UpdateProductImageDto,
@@ -166,20 +166,20 @@ export class ProductsController {
   }
 
   @Delete('images/:imageId')
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   deleteProductImage(@Param('imageId', ParseUUIDPipe) imageId: string) {
     return this.productsService.deleteProductImage(imageId);
   }
 
   @Patch('images/:imageId/set-primary')
-  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE)
+  @Auth(UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER)
   setPrimaryImage(@Param('imageId', ParseUUIDPipe) imageId: string) {
     return this.productsService.setPrimaryImage(imageId);
   }
 
   // Bulk price endpoints
   @Post(':id/bulk-prices')
-  @Auth(UserRole.ADMIN)
+  @Auth(UserRole.ADMIN, UserRole.CASHIER)
   addBulkPrice(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() createBulkPriceDto: CreateBulkPriceDto,
@@ -188,7 +188,7 @@ export class ProductsController {
   }
 
   @Patch('bulk-prices/:id')
-  @Auth(UserRole.ADMIN)
+  @Auth(UserRole.ADMIN, UserRole.CASHIER)
   updateBulkPrice(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateBulkPriceDto: CreateBulkPriceDto,
@@ -197,7 +197,7 @@ export class ProductsController {
   }
 
   @Delete('bulk-prices/:id')
-  @Auth(UserRole.ADMIN)
+  @Auth(UserRole.ADMIN, UserRole.CASHIER)
   removeBulkPrice(@Param('id', ParseUUIDPipe) id: string) {
     return this.productsService.removeBulkPrice(id);
   }
