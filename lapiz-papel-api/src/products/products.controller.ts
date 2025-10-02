@@ -44,6 +44,12 @@ export class ProductsController {
     return this.productsService.findAll(searchDto);
   }
 
+  @Get('brands')
+  @Auth()
+  getAllBrands() {
+    return this.productsService.getAllBrands();
+  }
+
   @Get('search')
   @Auth()
   searchProducts(

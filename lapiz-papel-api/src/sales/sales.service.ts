@@ -186,7 +186,8 @@ export class SalesService {
         .getOne();
 
       const sequenceNumber = lastReceipt ? lastReceipt.sequence_number + 1 : 1;
-      const receiptNumber = `${receiptSeries}-${sequenceNumber}`;
+      // ✅ Formato uniforme con padding de 8 dígitos para todos los receipts
+      const receiptNumber = `${receiptSeries}-${sequenceNumber.toString().padStart(8, '0')}`;
 
       // Determine customer name for receipt
       let receiptCustomerName = createSaleDto.receipt_customer_name;
@@ -361,7 +362,8 @@ export class SalesService {
       .getOne();
 
     const sequenceNumber = lastReceipt ? lastReceipt.sequence_number + 1 : 1;
-    const receiptNumber = `${createReceiptDto.series}-${sequenceNumber}`;
+    // ✅ Formato uniforme con padding de 8 dígitos para todos los receipts
+    const receiptNumber = `${createReceiptDto.series}-${sequenceNumber.toString().padStart(8, '0')}`;
 
     const receipt = this.salesReceiptRepository.create({
       ...createReceiptDto,
@@ -1154,24 +1156,23 @@ export class SalesService {
       throw new NotFoundException('Configuración de empresa no encontrada');
     }
 
-    // Crear número de correlativo simulando una nota de venta
+    // Crear número de correlativo usando el receipt o simulando
     const correlativo = receipt
       ? receipt.sequence_number
       : Math.floor(Math.random() * 1000) + 1;
-    const serie = 'NV01';
-    const numeroDocumento = `${serie}-${correlativo
-      .toString()
-      .padStart(8, '0')}`;
+    const serie = receipt?.series || 'NV01';
+    // ✅ Formato uniforme con padding de 8 dígitos (igual que en BD)
+    const numeroDocumento = receipt?.receipt_number || `${serie}-${correlativo.toString().padStart(8, '0')}`;
 
-    // Mapear items
+    // Mapear items con conversión a número para evitar problemas de precisión
     const items = sale.items.map((item, index) => ({
       numero: index + 1,
       sku: item.product?.sku || item.product_code || 'N/A',
       descripcion: item.product?.name || item.description || 'Producto',
-      unidad: item.product?.unit, // Sin fallback, veamos qué pasa
-      cantidad: item.quantity,
-      precioUnitario: item.unit_price,
-      subtotal: item.total_price,
+      unidad: item.product?.unit,
+      cantidad: Number(item.quantity),
+      precioUnitario: Number(item.unit_price),
+      subtotal: Number(item.total_price),
     }));
 
     // Formatear fecha y hora
@@ -1210,8 +1211,8 @@ export class SalesService {
       // Items
       items: items,
 
-      // Totales
-      totalVenta: sale.total_amount,
+      // Totales - Convertir a número con 2 decimales para evitar problemas de precisión
+      totalVenta: Number(Number(sale.total_amount).toFixed(2)),
 
       // Información adicional
       saleId: sale.id,

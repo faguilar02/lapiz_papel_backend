@@ -54,27 +54,19 @@ export class PurchasesService {
             };
           }
 
-          // Si no viene unit_cost, buscar precio por volumen
-          const priceInfo = await this.productsService.getApplicableBulkPrice(
-            item.product_id,
-            item.quantity,
-          );
+          // Obtener información del producto
+          const product = await this.productsService.findOne(item.product_id);
 
-          const unit_cost = Number(
-            priceInfo.tier_applied
-              ? (
-                  Number(priceInfo.tier_applied.cost_bundle_total) /
-                  item.quantity
-                ).toFixed(2)
-              : priceInfo.base_prices.cost_unit_price,
-          );
+          // Usar el precio de costo base del producto
+          const unit_cost = Number(product.cost_price);
+          const total_cost = Number(unit_cost * item.quantity).toFixed(2);
 
           return {
             ...item,
             unit_cost,
-            total_cost: Number(priceInfo.totals.cost_total),
-            price_source: priceInfo.price_source,
-            tier_id: priceInfo.tier_applied?.id || null, // Asegurar que siempre haya un valor (null si no hay tier)
+            total_cost: Number(total_cost),
+            price_source: 'base_cost',
+            tier_id: null,
           };
         }),
       );

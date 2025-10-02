@@ -11,6 +11,10 @@ export class SearchProductsDto {
   category_id?: string;
 
   @IsOptional()
+  @IsString()
+  brand?: string; // Filtrar por marca específica
+
+  @IsOptional()
   @Type(() => Number)
   limit?: number = 20;
 

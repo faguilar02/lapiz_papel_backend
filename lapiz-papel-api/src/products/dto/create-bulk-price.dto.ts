@@ -10,10 +10,6 @@ export class CreateBulkPriceDto {
   @IsPositive()
   sale_bundle_total: string;
 
-  @IsNumber()
-  @IsPositive()
-  cost_bundle_total: string;
-
   @IsString()
   pricing_mode: string = 'bundle_exact';
 }

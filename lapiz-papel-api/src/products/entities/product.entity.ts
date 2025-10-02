@@ -23,6 +23,9 @@ export class Product {
   @Column({ type: 'text', unique: true })
   sku: string;
 
+  @Column({ type: 'text', nullable: true })
+  brand: string;
+
   @Column({ type: 'uuid', nullable: true })
   category_id: string;
 

@@ -23,9 +23,6 @@ export class ProductBulkPrice {
   @Column({ type: 'numeric', precision: 10, scale: 2 })
   sale_bundle_total: string;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2 })
-  cost_bundle_total: string;
-
   @Column({ type: 'varchar', default: 'bundle_exact' })
   pricing_mode: string;
 

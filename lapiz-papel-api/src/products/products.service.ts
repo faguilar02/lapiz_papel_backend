@@ -9,6 +9,7 @@ import { Repository, Not } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { ProductImage } from './entities/product-image.entity';
 import { ProductBulkPrice } from './entities/product-bulk-price.entity';
+import { Category } from '../categories/entities/category.entity';
 import { CreateProductDto, UpdateProductDto, SearchProductsDto } from './dto';
 import {
   CreateProductImageDto,
@@ -34,6 +35,14 @@ export class ProductsService {
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     try {
+      // Generar SKU automáticamente si no viene en el DTO
+      if (!createProductDto.sku) {
+        createProductDto.sku = await this.generateSKU(
+          createProductDto.name,
+          createProductDto.category_id,
+        );
+      }
+
       const product = this.productRepository.create(createProductDto);
       return await this.productRepository.save(product);
     } catch (error) {
@@ -48,7 +57,7 @@ export class ProductsService {
   async findAll(
     searchDto: SearchProductsDto,
   ): Promise<PaginatedResponse<Product>> {
-    const { search, category_id, limit = 10, offset = 0 } = searchDto;
+    const { search, category_id, brand, limit = 10, offset = 0 } = searchDto;
 
     console.log('🔍 Products Service: findAll called with:', searchDto);
 
@@ -73,6 +82,11 @@ export class ProductsService {
       });
     }
 
+    // Filtro por marca
+    if (brand) {
+      queryBuilder.andWhere('product.brand = :brand', { brand });
+    }
+
     // NOTA: Ahora incluimos TODOS los productos, tanto activos como inactivos
 
     const [data, total] = await queryBuilder
@@ -82,6 +96,24 @@ export class ProductsService {
 
     console.log('🔍 Products Service: found', total, 'products');
     return createPaginatedResponse(data, total, limit, offset);
+  }
+
+  /**
+   * Obtiene todas las marcas únicas de productos (sin repetir)
+   */
+  async getAllBrands(): Promise<{ brands: string[] }> {
+    const result = await this.productRepository
+      .createQueryBuilder('product')
+      .select('DISTINCT product.brand', 'brand')
+      .where('product.brand IS NOT NULL')
+      .andWhere("product.brand != ''")
+      .orderBy('product.brand', 'ASC')
+      .getRawMany();
+
+    const brands = result.map((row) => row.brand);
+    
+    console.log(`🏷️ Found ${brands.length} unique brands`);
+    return { brands };
   }
 
   async findOne(id: string): Promise<Product> {
@@ -424,67 +456,83 @@ export class ProductsService {
     // Formatear precios base
     const base_prices = {
       sale_unit_price: Number(product.sale_price).toFixed(2),
-      cost_unit_price: Number(product.cost_price).toFixed(2),
     };
 
-    // Buscar tier con cantidad exacta
-    const exactTier = await this.bulkPriceRepository
+    // Buscar el mejor tier aplicable (cantidad >= min_quantity)
+    // Ordenado de mayor a menor para obtener el mejor descuento
+    const applicableTier = await this.bulkPriceRepository
       .createQueryBuilder('bulk_price')
       .where('bulk_price.product_id = :productId', { productId })
-      .andWhere('bulk_price.min_quantity = :quantity', { quantity })
+      .andWhere('bulk_price.min_quantity <= :quantity', { quantity })
       .andWhere('bulk_price.is_active = :isActive', { isActive: true })
+      .orderBy('bulk_price.min_quantity', 'DESC')
       .getOne();
 
-    // Si hay tier exacto
-    if (exactTier) {
+    // Si hay tier aplicable
+    if (applicableTier) {
       const sale_unit_price_effective = (
-        Number(exactTier.sale_bundle_total) / quantity
+        Number(applicableTier.sale_bundle_total) / applicableTier.min_quantity
       ).toFixed(2);
-      const cost_unit_price_effective = (
-        Number(exactTier.cost_bundle_total) / quantity
+
+      // Calcular totales con el precio unitario efectivo
+      const sale_total = (
+        Number(sale_unit_price_effective) * quantity
       ).toFixed(2);
 
       return {
         product_id: productId,
         quantity_requested: quantity,
         base_prices,
+        bulk_price_applied: true,
         tier_applied: {
-          id: exactTier.id,
-          min_quantity: exactTier.min_quantity,
-          pricing_mode: exactTier.pricing_mode,
-          sale_bundle_total: exactTier.sale_bundle_total,
-          cost_bundle_total: exactTier.cost_bundle_total,
+          id: applicableTier.id,
+          min_quantity: applicableTier.min_quantity,
+          pricing_mode: applicableTier.pricing_mode,
+          sale_bundle_total: applicableTier.sale_bundle_total,
         },
         effective_prices: {
           sale_unit_price_effective,
-          cost_unit_price_effective,
         },
         totals: {
-          sale_total: exactTier.sale_bundle_total,
-          cost_total: exactTier.cost_bundle_total,
+          sale_total,
         },
-        price_source: 'tier_exact',
+        savings: {
+          sale_savings: (
+            Number(product.sale_price) * quantity -
+            Number(sale_total)
+          ).toFixed(2),
+          sale_savings_percentage: (
+            ((Number(product.sale_price) * quantity - Number(sale_total)) /
+              (Number(product.sale_price) * quantity)) *
+            100
+          ).toFixed(2),
+        },
+        price_source: 'bulk_price',
+        message: `Bulk price applied for ${applicableTier.min_quantity}+ units`,
       };
     }
 
-    // Si no hay tier exacto, usar precios base
+    // Si no hay tier aplicable, usar precios base
     const sale_total = (Number(product.sale_price) * quantity).toFixed(2);
-    const cost_total = (Number(product.cost_price) * quantity).toFixed(2);
 
     return {
       product_id: productId,
       quantity_requested: quantity,
       base_prices,
+      bulk_price_applied: false,
       tier_applied: null,
       effective_prices: {
         sale_unit_price_effective: base_prices.sale_unit_price,
-        cost_unit_price_effective: base_prices.cost_unit_price,
       },
       totals: {
         sale_total,
-        cost_total,
+      },
+      savings: {
+        sale_savings: '0.00',
+        sale_savings_percentage: '0.00',
       },
       price_source: 'base',
+      message: 'No bulk price available for this quantity',
     };
   }
 
@@ -542,5 +590,66 @@ export class ProductsService {
     return {
       totalPrice: product.cost_price * quantity,
     };
+  }
+
+  /**
+   * Genera un SKU único automáticamente
+   * Formato: CAT-XXX-NNNN
+   * - CAT: 3 primeras letras de la categoría (o GEN si no tiene)
+   * - XXX: 3 primeras letras del nombre del producto
+   * - NNNN: Número secuencial de 4 dígitos
+   */
+  private async generateSKU(
+    productName: string,
+    categoryId?: string,
+  ): Promise<string> {
+    // Obtener prefijo de categoría
+    let categoryPrefix = 'GEN';
+    if (categoryId) {
+      const category = await this.productRepository.manager
+        .getRepository(Category)
+        .findOne({
+          where: { id: categoryId },
+        });
+      if (category && category.name) {
+        categoryPrefix = this.sanitizeForSKU(category.name).substring(0, 3);
+      }
+    }
+
+    // Obtener prefijo del producto
+    const productPrefix = this.sanitizeForSKU(productName).substring(0, 3);
+
+    // Obtener el último número secuencial
+    const lastProduct = await this.productRepository
+      .createQueryBuilder('product')
+      .where('product.sku LIKE :pattern', {
+        pattern: `${categoryPrefix}-${productPrefix}-%`,
+      })
+      .orderBy('product.sku', 'DESC')
+      .getOne();
+
+    let sequenceNumber = 1;
+    if (lastProduct && lastProduct.sku) {
+      const lastSequence = lastProduct.sku.split('-')[2];
+      sequenceNumber = parseInt(lastSequence, 10) + 1;
+    }
+
+    // Formatear número con padding de 4 dígitos
+    const formattedNumber = sequenceNumber.toString().padStart(4, '0');
+
+    return `${categoryPrefix}-${productPrefix}-${formattedNumber}`;
+  }
+
+  /**
+   * Sanitiza texto para usar en SKU
+   * Remueve acentos, convierte a mayúsculas y elimina caracteres especiales
+   */
+  private sanitizeForSKU(text: string): string {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remover acentos
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '') // Solo letras y números
+      .substring(0, 3);
   }
 }

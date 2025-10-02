@@ -17,9 +17,13 @@ export class CreateProductDto {
   @IsNotEmpty()
   name: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  sku: string;
+  sku?: string;
+
+  @IsOptional()
+  @IsString()
+  brand?: string;
 
   @IsOptional()
   @IsUUID()
