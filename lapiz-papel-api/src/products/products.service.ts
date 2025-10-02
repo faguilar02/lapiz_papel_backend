@@ -111,7 +111,7 @@ export class ProductsService {
       .getRawMany();
 
     const brands = result.map((row) => row.brand);
-    
+
     console.log(`🏷️ Found ${brands.length} unique brands`);
     return { brands };
   }
@@ -475,9 +475,9 @@ export class ProductsService {
       ).toFixed(2);
 
       // Calcular totales con el precio unitario efectivo
-      const sale_total = (
-        Number(sale_unit_price_effective) * quantity
-      ).toFixed(2);
+      const sale_total = (Number(sale_unit_price_effective) * quantity).toFixed(
+        2,
+      );
 
       return {
         product_id: productId,

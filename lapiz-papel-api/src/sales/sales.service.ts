@@ -187,7 +187,9 @@ export class SalesService {
 
       const sequenceNumber = lastReceipt ? lastReceipt.sequence_number + 1 : 1;
       // ✅ Formato uniforme con padding de 8 dígitos para todos los receipts
-      const receiptNumber = `${receiptSeries}-${sequenceNumber.toString().padStart(8, '0')}`;
+      const receiptNumber = `${receiptSeries}-${sequenceNumber
+        .toString()
+        .padStart(8, '0')}`;
 
       // Determine customer name for receipt
       let receiptCustomerName = createSaleDto.receipt_customer_name;
@@ -363,7 +365,9 @@ export class SalesService {
 
     const sequenceNumber = lastReceipt ? lastReceipt.sequence_number + 1 : 1;
     // ✅ Formato uniforme con padding de 8 dígitos para todos los receipts
-    const receiptNumber = `${createReceiptDto.series}-${sequenceNumber.toString().padStart(8, '0')}`;
+    const receiptNumber = `${createReceiptDto.series}-${sequenceNumber
+      .toString()
+      .padStart(8, '0')}`;
 
     const receipt = this.salesReceiptRepository.create({
       ...createReceiptDto,
@@ -1162,7 +1166,9 @@ export class SalesService {
       : Math.floor(Math.random() * 1000) + 1;
     const serie = receipt?.series || 'NV01';
     // ✅ Formato uniforme con padding de 8 dígitos (igual que en BD)
-    const numeroDocumento = receipt?.receipt_number || `${serie}-${correlativo.toString().padStart(8, '0')}`;
+    const numeroDocumento =
+      receipt?.receipt_number ||
+      `${serie}-${correlativo.toString().padStart(8, '0')}`;
 
     // Mapear items con conversión a número para evitar problemas de precisión
     const items = sale.items.map((item, index) => ({
@@ -1175,9 +1181,12 @@ export class SalesService {
       subtotal: Number(item.total_price),
     }));
 
-    // Formatear fecha y hora
-    const fechaEmision = sale.created_at.toLocaleDateString('es-PE');
+    // Formatear fecha y hora en zona horaria de Perú (America/Lima, UTC-5)
+    const fechaEmision = sale.created_at.toLocaleDateString('es-PE', {
+      timeZone: 'America/Lima',
+    });
     const horaEmision = sale.created_at.toLocaleTimeString('es-PE', {
+      timeZone: 'America/Lima',
       hour: '2-digit',
       minute: '2-digit',
     });
