@@ -1191,9 +1191,18 @@ export class SalesService {
       minute: '2-digit',
     });
 
-    return {
+    // Determinar si es Nota de Venta o documento con IGV (Boleta/Factura)
+    const isNotaVenta = serie.startsWith('NV');
+    const tipoDocumento = isNotaVenta
+      ? 'NOTA DE VENTA'
+      : serie.startsWith('B')
+        ? 'BOLETA ELECTRÓNICA'
+        : 'FACTURA ELECTRÓNICA';
+
+    // Construir respuesta base
+    const response: any = {
       // Información del documento
-      tipoDocumento: 'NOTA DE VENTA',
+      tipoDocumento: tipoDocumento,
       serie: serie,
       correlativo: correlativo,
       numeroDocumento: numeroDocumento,
@@ -1219,14 +1228,23 @@ export class SalesService {
 
       // Items
       items: items,
-
-      // Totales - Convertir a número con 2 decimales para evitar problemas de precisión
-      totalVenta: Number(Number(sale.total_amount).toFixed(2)),
-
-      // Información adicional
-      saleId: sale.id,
-      receiptId: receipt?.id || null,
     };
+
+    // ✅ Si es Nota de Venta (NV01): solo mostrar total
+    if (isNotaVenta) {
+      response.totalVenta = Number(Number(sale.total_amount).toFixed(2));
+    } else {
+      // ✅ Si es Boleta o Factura: mostrar subtotal, IGV y total
+      response.subtotal = Number(Number(sale.subtotal).toFixed(2));
+      response.igv = Number(Number(sale.igv_amount).toFixed(2));
+      response.total = Number(Number(sale.total_amount).toFixed(2));
+    }
+
+    // Información adicional
+    response.saleId = sale.id;
+    response.receiptId = receipt?.id || null;
+
+    return response;
   }
 
   /**
@@ -1235,6 +1253,8 @@ export class SalesService {
   private formatPaymentMethod(paymentMethod: string): string {
     const methodMap = {
       cash: 'EFECTIVO',
+      yape: 'YAPE',
+      plin: 'PLIN',
       card: 'TARJETA',
       transfer: 'TRANSFERENCIA',
       credit: 'CRÉDITO',
