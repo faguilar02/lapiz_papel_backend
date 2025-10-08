@@ -470,14 +470,22 @@ export class ProductsService {
 
     // Si hay tier aplicable
     if (applicableTier) {
-      const sale_unit_price_effective = (
-        Number(applicableTier.sale_bundle_total) / applicableTier.min_quantity
-      ).toFixed(2);
+      // ✅ NUEVO: Calcular el total correcto según el tipo de bulk price
+      let sale_total: string;
+      let sale_unit_price_effective: number;
 
-      // Calcular totales con el precio unitario efectivo
-      const sale_total = (Number(sale_unit_price_effective) * quantity).toFixed(
-        2,
-      );
+      if (quantity === applicableTier.min_quantity) {
+        // Si la cantidad coincide exactamente con la mínima, usar el precio bundle directo
+        sale_total = Number(applicableTier.sale_bundle_total).toFixed(2);
+        sale_unit_price_effective = 
+          Number(applicableTier.sale_bundle_total) / quantity;
+      } else {
+        // Si la cantidad es mayor, calcular proporcionalmente
+        const pricePerUnit = 
+          Number(applicableTier.sale_bundle_total) / applicableTier.min_quantity;
+        sale_total = (pricePerUnit * quantity).toFixed(2);
+        sale_unit_price_effective = pricePerUnit;
+      }
 
       return {
         product_id: productId,
@@ -491,7 +499,7 @@ export class ProductsService {
           sale_bundle_total: applicableTier.sale_bundle_total,
         },
         effective_prices: {
-          sale_unit_price_effective,
+          sale_unit_price_effective: sale_unit_price_effective,
         },
         totals: {
           sale_total,
