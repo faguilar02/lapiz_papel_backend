@@ -6,9 +6,16 @@ import { createHash } from 'crypto';
 @Injectable()
 export class XadesSignerService {
   private readonly logger = new Logger(XadesSignerService.name);
-  private readonly baseUrl = process.env.XADES_URL || 'http://localhost:8080';
+  private readonly baseUrl = process.env.XADES_URL;
+  private readonly enabled = !!process.env.XADES_URL;
 
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly http: HttpService) {
+    if (!this.enabled) {
+      this.logger.warn(
+        '⚠️  XAdES signing is DISABLED - XADES_URL not configured. CPE emission will be skipped.',
+      );
+    }
+  }
 
   /**
    * Ya no necesitamos cargar certificados aquí - se maneja en el servicio Java
@@ -19,9 +26,23 @@ export class XadesSignerService {
   }
 
   /**
+   * Verifica si el servicio XAdES está habilitado
+   */
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+
+  /**
    * Firma XML usando el servicio Java XAdES
    */
   async sign(xml: string): Promise<{ signedXml: string; digestValue: string }> {
+    // Verificar si el servicio está habilitado
+    if (!this.enabled) {
+      throw new Error(
+        'XAdES signing service is disabled. Set XADES_URL environment variable to enable CPE signing.',
+      );
+    }
+
     try {
       this.logger.debug(`Sending XML to XAdES service at ${this.baseUrl}`);
 
@@ -65,7 +86,7 @@ export class XadesSignerService {
 
       if (error.code === 'ECONNREFUSED') {
         throw new Error(
-          'XAdES signing service unavailable - check if xades-signer container is running',
+          'XAdES signing service unavailable. The service is not running or not reachable.',
         );
       }
 

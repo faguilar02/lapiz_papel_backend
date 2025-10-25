@@ -1196,8 +1196,8 @@ export class SalesService {
     const tipoDocumento = isNotaVenta
       ? 'NOTA DE VENTA'
       : serie.startsWith('B')
-        ? 'BOLETA ELECTRÓNICA'
-        : 'FACTURA ELECTRÓNICA';
+      ? 'BOLETA ELECTRÓNICA'
+      : 'FACTURA ELECTRÓNICA';
 
     // Construir respuesta base
     const response: any = {

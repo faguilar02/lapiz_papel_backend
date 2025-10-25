@@ -477,12 +477,13 @@ export class ProductsService {
       if (quantity === applicableTier.min_quantity) {
         // Si la cantidad coincide exactamente con la mínima, usar el precio bundle directo
         sale_total = Number(applicableTier.sale_bundle_total).toFixed(2);
-        sale_unit_price_effective = 
+        sale_unit_price_effective =
           Number(applicableTier.sale_bundle_total) / quantity;
       } else {
         // Si la cantidad es mayor, calcular proporcionalmente
-        const pricePerUnit = 
-          Number(applicableTier.sale_bundle_total) / applicableTier.min_quantity;
+        const pricePerUnit =
+          Number(applicableTier.sale_bundle_total) /
+          applicableTier.min_quantity;
         sale_total = (pricePerUnit * quantity).toFixed(2);
         sale_unit_price_effective = pricePerUnit;
       }

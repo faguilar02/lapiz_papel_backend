@@ -5,9 +5,16 @@ import { firstValueFrom } from 'rxjs';
 @Injectable()
 export class TestXadesService {
   private readonly logger = new Logger(TestXadesService.name);
-  private readonly baseUrl = process.env.XADES_URL || 'http://localhost:8080';
+  private readonly baseUrl = process.env.XADES_URL;
+  private readonly enabled = !!process.env.XADES_URL;
 
-  constructor(private readonly http: HttpService) {}
+  constructor(private readonly http: HttpService) {
+    if (!this.enabled) {
+      this.logger.warn(
+        'XAdES service tests disabled - XADES_URL not configured',
+      );
+    }
+  }
 
   /**
    * Prueba la conexión con el servicio XAdES
@@ -17,6 +24,14 @@ export class TestXadesService {
     message: string;
     error?: string;
   }> {
+    if (!this.enabled) {
+      return {
+        success: false,
+        message: 'XAdES service is disabled',
+        error: 'XADES_URL environment variable is not set',
+      };
+    }
+
     try {
       this.logger.log(`Testing connection to XAdES service at ${this.baseUrl}`);
 
@@ -64,6 +79,14 @@ export class TestXadesService {
     message: string;
     error?: string;
   }> {
+    if (!this.enabled) {
+      return {
+        success: false,
+        message: 'XAdES service is disabled',
+        error: 'XADES_URL environment variable is not set',
+      };
+    }
+
     try {
       const testXml = `<?xml version="1.0" encoding="UTF-8"?>
 <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2">

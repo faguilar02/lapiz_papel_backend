@@ -62,6 +62,14 @@ export class CpeEmissionService {
 
     const { xml } = this.builder.buildFromSunatJson(sunatJson);
 
+    // Verificar si el servicio de firma está habilitado
+    if (!this.signer.isEnabled()) {
+      throw new Error(
+        'CPE emission is disabled. XAdES signing service (XADES_URL) is not configured. ' +
+          'To enable CPE emission, set the XADES_URL environment variable and start the xades-signer service.',
+      );
+    }
+
     // Firmar XML usando el servicio Java XAdES
     const signed = await this.signer.sign(xml);
 

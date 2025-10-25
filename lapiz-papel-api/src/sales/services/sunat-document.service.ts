@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,12 +12,15 @@ import { Sale } from '../entities/sale.entity';
 import { CompanySettings } from '../../common/entities/company-settings.entity';
 import { Customer } from '../../customers/entities/customer.entity';
 import { CpeEmissionService } from '../../cpe/services/cpe-emission.service';
+import { XadesSignerService } from '../../cpe/signer/xades-signer.service';
 import { InvoiceDto } from '../../cpe/dto/invoice.dto';
 import { PartyDto } from '../../cpe/dto/party.dto';
 import { CpeItemDto } from '../../cpe/dto/cpe-item.dto';
 
 @Injectable()
 export class SunatDocumentService {
+  private readonly logger = new Logger(SunatDocumentService.name);
+
   constructor(
     @InjectRepository(SalesReceipt)
     private salesReceiptRepository: Repository<SalesReceipt>,
@@ -31,6 +35,7 @@ export class SunatDocumentService {
     private companySettingsRepository: Repository<CompanySettings>,
 
     private cpeEmissionService: CpeEmissionService,
+    private xadesSignerService: XadesSignerService,
   ) {}
 
   /**
@@ -346,6 +351,31 @@ export class SunatDocumentService {
     hash: string;
     signedXml?: string;
   }> {
+    // Verificar si XAdES está habilitado
+    if (!this.xadesSignerService.isEnabled()) {
+      this.logger.warn(
+        `Attempted to emit to SUNAT but XAdES is disabled. Receipt ID: ${receiptId}`,
+      );
+
+      // Actualizar el receipt indicando que la emisión está deshabilitada
+      await this.salesReceiptRepository.update(receiptId, {
+        sunat_status_code: 'DISABLED',
+        sunat_status_message:
+          'CPE emission is disabled. Using external API for electronic invoicing.',
+        sent_to_sunat_at: new Date(),
+      });
+
+      return {
+        cpeDocumentId: 'N/A',
+        documentId: 'N/A',
+        status: 'DISABLED',
+        description:
+          'CPE emission is disabled. Configure XADES_URL to enable built-in SUNAT emission, or use your external API.',
+        hash: 'N/A',
+        signedXml: undefined,
+      };
+    }
+
     const receipt = await this.salesReceiptRepository.findOne({
       where: { id: receiptId },
       relations: ['sale', 'sale.customer'],

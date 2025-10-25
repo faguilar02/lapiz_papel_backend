@@ -25,6 +25,6 @@ import { TestXadesService } from './test-xades.service';
     CpeStorageService,
     TestXadesService,
   ],
-  exports: [CpeEmissionService],
+  exports: [CpeEmissionService, XadesSignerService],
 })
 export class CpeModule {}
