@@ -3,7 +3,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsUUID,
-  IsInt,
+  IsNumber,
+  IsPositive,
   IsIn,
 } from 'class-validator';
 
@@ -14,7 +15,8 @@ export class CreateInventoryMovementDto {
   @IsIn(['entry', 'exit', 'adjustment'])
   movement_type: string;
 
-  @IsInt()
+  @IsNumber()
+  @IsPositive()
   quantity: number;
 
   @IsString()

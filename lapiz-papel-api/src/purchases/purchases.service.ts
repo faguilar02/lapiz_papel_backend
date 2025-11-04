@@ -212,7 +212,7 @@ export class PurchasesService {
 
               await this.productsService.updateStock(
                 item.product_id,
-                item.quantity,
+                Number(item.quantity),
               );
               await this.inventoryService.create(
                 {
@@ -234,7 +234,7 @@ export class PurchasesService {
               for (const item of purchase.items) {
                 await this.productsService.updateStock(
                   item.product_id,
-                  -item.quantity,
+                  -Number(item.quantity),
                 );
                 await this.inventoryService.create(
                   {
@@ -277,7 +277,7 @@ export class PurchasesService {
         for (const item of purchase.items) {
           await this.productsService.updateStock(
             item.product_id,
-            -item.quantity,
+            -Number(item.quantity),
           );
           await this.inventoryService.create(
             {
@@ -323,7 +323,7 @@ export class PurchasesService {
         for (const item of purchase.items) {
           await this.productsService.updateStock(
             item.product_id,
-            -item.quantity,
+            -Number(item.quantity),
           );
           await this.inventoryService.create(
             {

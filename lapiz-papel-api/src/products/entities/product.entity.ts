@@ -38,10 +38,10 @@ export class Product {
   @Column({ type: 'numeric', default: 0 })
   cost_price: number;
 
-  @Column({ type: 'integer', default: 0 })
+  @Column({ type: 'numeric', precision: 12, scale: 3, default: 0 })
   stock_quantity: number;
 
-  @Column({ type: 'integer', default: 0 })
+  @Column({ type: 'numeric', precision: 12, scale: 3, default: 0 })
   minimum_stock: number;
 
   @Column({ type: 'text', nullable: true })

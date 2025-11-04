@@ -146,7 +146,7 @@ export class SalesService {
 
       // Update product stock and create inventory movements
       for (const item of createSaleDto.items) {
-        await this.productsService.updateStock(item.product_id, -item.quantity);
+        await this.productsService.updateStock(item.product_id, -Number(item.quantity));
         await this.inventoryService.create(
           {
             product_id: item.product_id,
@@ -324,7 +324,7 @@ export class SalesService {
 
       // Si la venta tenía productos despachados, devolver el stock
       for (const item of sale.items) {
-        await this.productsService.updateStock(item.product_id, item.quantity);
+        await this.productsService.updateStock(item.product_id, Number(item.quantity));
         await this.inventoryService.create(
           {
             product_id: item.product_id,
@@ -565,7 +565,7 @@ export class SalesService {
         for (const item of receipt.sale.items) {
           await this.productsService.updateStock(
             item.product_id,
-            item.quantity,
+            Number(item.quantity),
           );
           // Crear el movimiento de inventario
           await this.inventoryService.create(

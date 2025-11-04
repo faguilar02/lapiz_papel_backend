@@ -16,7 +16,7 @@ export class CreatePurchaseItemDto {
   @IsUUID()
   product_id: string;
 
-  @IsInt()
+  @IsNumber()
   @IsPositive()
   quantity: number;
 

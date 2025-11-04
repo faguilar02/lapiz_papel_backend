@@ -20,7 +20,7 @@ export class SaleItem {
   @Column({ type: 'uuid', nullable: false })
   product_id: string;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'numeric', precision: 12, scale: 3 })
   quantity: number;
 
   @Column({ type: 'numeric', precision: 12, scale: 2 })

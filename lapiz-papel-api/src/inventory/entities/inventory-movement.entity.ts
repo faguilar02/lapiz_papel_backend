@@ -23,7 +23,7 @@ export class InventoryMovement {
   })
   movement_type: string;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'numeric', precision: 12, scale: 3 })
   quantity: number;
 
   @Column({ type: 'text' })

@@ -226,12 +226,30 @@ export class ReportsService {
     // Get sales revenue
     const salesData = await this.getSalesReport(query);
 
-    // Get purchases cost
+    // Get purchases cost (total gastado en compras)
     const purchasesData = await this.getPurchasesReport(query);
 
+    // Calcular el COSTO de los productos vendidos (COGS - Cost of Goods Sold)
+    // Esto es: para cada producto vendido, sumar (cantidad_vendida * costo_del_producto)
+    const costOfGoodsSold = await this.saleItemRepository
+      .createQueryBuilder('sale_item')
+      .innerJoin('sale_item.sale', 'sale')
+      .innerJoin('sale_item.product', 'product')
+      .select(
+        'COALESCE(SUM(sale_item.quantity::numeric * product.cost_price::numeric), 0)',
+        'total_cogs',
+      )
+      .where('sale.created_at BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .andWhere('sale.is_active = :isActive', { isActive: true })
+      .getRawOne();
+
     const totalRevenue = salesData.summary.total_revenue;
-    const totalCost = purchasesData.summary.total_cost;
-    const grossProfit = totalRevenue - totalCost;
+    const totalPurchasesCost = purchasesData.summary.total_cost; // Gastos en compras
+    const totalCOGS = parseFloat(costOfGoodsSold.total_cogs || 0); // Costo de productos vendidos
+    const grossProfit = totalRevenue - totalCOGS; // Ganancia bruta = Ingresos - Costo de lo vendido
     const profitMargin =
       totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
 
@@ -242,9 +260,10 @@ export class ReportsService {
         period_type: query.period,
       },
       financial_summary: {
-        total_revenue: totalRevenue,
-        total_cost: totalCost,
-        gross_profit: grossProfit,
+        total_revenue: totalRevenue, // Ingresos por ventas
+        total_purchases_cost: totalPurchasesCost, // Gastos en compras
+        cost_of_goods_sold: totalCOGS, // Costo de los productos vendidos
+        gross_profit: grossProfit, // Ganancia bruta (Ingresos - Costo de vendidos)
         profit_margin_percentage: parseFloat(profitMargin.toFixed(2)),
         total_sales_count: salesData.summary.total_sales,
         total_purchases_count: purchasesData.summary.total_purchases,
@@ -253,16 +272,19 @@ export class ReportsService {
   }
 
   async getCompleteReport(query: ReportsQueryDto) {
-    const [salesReport, purchasesReport, topProducts] = await Promise.all([
-      this.getSalesReport(query),
-      this.getPurchasesReport(query),
-      this.getTopSellingProducts(query),
-    ]);
+    const [salesReport, purchasesReport, topProducts, financialSummary] =
+      await Promise.all([
+        this.getSalesReport(query),
+        this.getPurchasesReport(query),
+        this.getTopSellingProducts(query),
+        this.getFinancialSummary(query),
+      ]);
 
     return {
       sales: salesReport,
       purchases: purchasesReport,
       top_products: topProducts,
+      financial_summary: financialSummary,
     };
   }
 }
