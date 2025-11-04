@@ -67,12 +67,18 @@ export class ProductsService {
       .addSelect('product.is_active')
       .orderBy('product.created_at', 'DESC');
 
-    // Filtro por búsqueda general
+    // Filtro por búsqueda general (por palabras clave)
     if (search) {
-      queryBuilder.andWhere(
-        '(product.name ILIKE :search OR product.sku ILIKE :search OR category.name ILIKE :search)',
-        { search: `%${search}%` },
-      );
+      // Dividir la búsqueda en palabras individuales
+      const keywords = search.trim().split(/\s+/); // Separa por espacios
+      
+      // Crear una condición AND para cada palabra
+      keywords.forEach((keyword, index) => {
+        queryBuilder.andWhere(
+          `(product.name ILIKE :keyword${index} OR product.sku ILIKE :keyword${index} OR product.brand ILIKE :keyword${index} OR category.name ILIKE :keyword${index})`,
+          { [`keyword${index}`]: `%${keyword}%` },
+        );
+      });
     }
 
     // Filtro por categoría
@@ -202,12 +208,21 @@ export class ProductsService {
     const queryBuilder = this.productRepository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category')
-      .where('product.is_active = :isActive', { isActive: true })
-      .andWhere(
-        '(product.name ILIKE :query OR product.sku ILIKE :query OR category.name ILIKE :query)',
-        { query: `%${query}%` },
-      )
-      .orderBy('product.created_at', 'DESC');
+      .where('product.is_active = :isActive', { isActive: true });
+
+    // Búsqueda por palabras clave
+    if (query && query.trim()) {
+      const keywords = query.trim().split(/\s+/);
+      
+      keywords.forEach((keyword, index) => {
+        queryBuilder.andWhere(
+          `(product.name ILIKE :keyword${index} OR product.sku ILIKE :keyword${index} OR product.brand ILIKE :keyword${index} OR category.name ILIKE :keyword${index})`,
+          { [`keyword${index}`]: `%${keyword}%` },
+        );
+      });
+    }
+    
+    queryBuilder.orderBy('product.created_at', 'DESC');
 
     const [data, total] = await queryBuilder
       .take(limit)
