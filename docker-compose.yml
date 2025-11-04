@@ -35,7 +35,7 @@ services:
       - SUNAT_BETA_ENDPOINT=${SUNAT_BETA_ENDPOINT}
       - SUNAT_PROD_ENDPOINT=${SUNAT_PROD_ENDPOINT}
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     restart: unless-stopped
 
   # === Postgres ===
@@ -49,6 +49,6 @@ services:
     volumes:
       - ./postgres:/var/lib/postgresql/data
     ports:
-      - "5433:5432" # cambiar puerto para evitar conflicto
+      - "127.0.0.1:5433:5432" # cambiar puerto para evitar conflicto
     restart: unless-stopped
 

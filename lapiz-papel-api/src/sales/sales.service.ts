@@ -679,6 +679,7 @@ export class SalesService {
                   id: item.product.id,
                   name: item.product.name,
                   sku: item.product.sku,
+		brand: item.product.brand,
                 }
               : null,
           })) || [],
@@ -1175,11 +1176,22 @@ export class SalesService {
       numero: index + 1,
       sku: item.product?.sku || item.product_code || 'N/A',
       descripcion: item.product?.name || item.description || 'Producto',
+	marca: item.product?.brand || null,
       unidad: item.product?.unit,
       cantidad: Number(item.quantity),
       precioUnitario: Number(item.unit_price),
       subtotal: Number(item.total_price),
     }));
+
+    // Calcular si el total fue editado manualmente
+    const sumOfItemSubtotals = items.reduce(
+      (sum, item) => sum + item.subtotal,
+      0,
+    );
+    const discountAmount = Number(sale.discount_amount || 0);
+    const expectedTotal = sumOfItemSubtotals - discountAmount;
+    const actualTotal = Number(sale.total_amount);
+    const manuallyEdited = Math.abs(expectedTotal - actualTotal) > 0.01; // Tolerancia de 0.01 para precisión decimal
 
     // Formatear fecha y hora en zona horaria de Perú (America/Lima, UTC-5)
     const fechaEmision = sale.created_at.toLocaleDateString('es-PE', {
@@ -1233,11 +1245,18 @@ export class SalesService {
     // ✅ Si es Nota de Venta (NV01): solo mostrar total
     if (isNotaVenta) {
       response.totalVenta = Number(Number(sale.total_amount).toFixed(2));
+      response.descuento = Number(Number(sale.discount_amount || 0).toFixed(2));
+      response.igv = Number(Number(sale.igv_amount || 0).toFixed(2));
+      response.notas = sale.notes || null;
+      response.totalEditadoManualmente = manuallyEdited;
     } else {
       // ✅ Si es Boleta o Factura: mostrar subtotal, IGV y total
       response.subtotal = Number(Number(sale.subtotal).toFixed(2));
       response.igv = Number(Number(sale.igv_amount).toFixed(2));
       response.total = Number(Number(sale.total_amount).toFixed(2));
+      response.descuento = Number(Number(sale.discount_amount || 0).toFixed(2));
+      response.notas = sale.notes || null;
+      response.totalEditadoManualmente = manuallyEdited;
     }
 
     // Información adicional
@@ -1277,3 +1296,4 @@ export class SalesService {
     };
   }
 }
+

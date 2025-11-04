@@ -65,6 +65,7 @@ export class DashboardService {
         'product.id',
         'product.name',
         'product.sku',
+	'product.brand',
         'product.stock_quantity',
         'product.minimum_stock',
       ])
@@ -91,6 +92,7 @@ export class DashboardService {
         id: product.id,
         name: product.name,
         sku: product.sku,
+	brand: product.brand,
         current_stock: product.stock_quantity,
         minimum_stock: product.minimum_stock,
       })),
@@ -142,6 +144,8 @@ export class DashboardService {
         cashier: sale.creator?.full_name,
         items: sale.items?.map((item) => ({
           product_name: item.product?.name,
+	product_brand: item.product?.brand,
+	product_sku: item.product?.sku,
           quantity: item.quantity,
           unit_price: item.unit_price,
           total_price: item.total_price,
