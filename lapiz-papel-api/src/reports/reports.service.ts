@@ -181,7 +181,7 @@ export class ReportsService {
         'product.id',
         'product.name',
         'product.sku',
-	'product.brand',
+        'product.brand',
         'category.name as category_name',
         'SUM(saleItem.quantity) as total_sold',
         'COALESCE(SUM(saleItem.total_price), 0) as total_revenue',
@@ -195,10 +195,10 @@ export class ReportsService {
       .groupBy('product.id')
       .addGroupBy('product.name')
       .addGroupBy('product.sku')
-	.addGroupBy('product.brand')	
-      .addGroupBy('category.name')	
+      .addGroupBy('product.brand')
+      .addGroupBy('category.name')
       .orderBy('total_revenue', 'DESC')
-      .take(20)
+      .take(10)
       .getRawMany();
 
     return {
@@ -211,7 +211,7 @@ export class ReportsService {
         product_id: item.product_id,
         product_name: item.product_name,
         sku: item.product_sku,
-	brand: item.product_brand,
+        brand: item.product_brand,
         category: item.category_name,
         quantity_sold: parseInt(item.total_sold),
         revenue: parseFloat(item.total_revenue),

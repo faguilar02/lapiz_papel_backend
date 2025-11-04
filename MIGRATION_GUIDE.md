@@ -3,10 +3,12 @@
 ## Cuando hagas deploy en VPS
 
 ### Opción 1: Si tienes `synchronize: true` (automático)
+
 ```bash
 # Solo reinicia el contenedor
 docker-compose restart nest-api
 ```
+
 ⚠️ **ADVERTENCIA:** `synchronize: true` en producción es peligroso
 
 ---
@@ -14,12 +16,14 @@ docker-compose restart nest-api
 ### Opción 2: Ejecutar migración SQL manualmente (RECOMENDADO)
 
 #### Paso 1: Conectarte a tu VPS
+
 ```bash
 ssh usuario@tu-vps
 cd /ruta/a/tu/proyecto
 ```
 
 #### Paso 2: Ejecutar las migraciones en orden
+
 ```bash
 # 1. Cambiar quantity en sale_items
 docker exec -i nombre-contenedor-postgres psql -U postgres -d lapizpapeldb -c "ALTER TABLE sale_items ALTER COLUMN quantity TYPE NUMERIC(12,3) USING quantity::numeric(12,3);"
@@ -38,16 +42,19 @@ docker exec -i nombre-contenedor-postgres psql -U postgres -d lapizpapeldb -c "A
 ```
 
 #### Paso 3: Verificar los cambios
+
 ```bash
 docker exec -i nombre-contenedor-postgres psql -U postgres -d lapizpapeldb -c "\d sale_items"
 ```
 
 Deberías ver:
+
 ```
 quantity | numeric(12,3)
 ```
 
 #### Paso 4: Reiniciar la API
+
 ```bash
 docker-compose restart nest-api
 # o
@@ -59,13 +66,14 @@ docker restart nombre-contenedor-api
 ## 🔍 Verificación
 
 ### Verificar que los tipos se cambiaron correctamente:
+
 ```bash
 docker exec -i nombre-contenedor-postgres psql -U postgres -d lapizpapeldb << EOF
-SELECT 
-  table_name, 
-  column_name, 
-  data_type, 
-  numeric_precision, 
+SELECT
+  table_name,
+  column_name,
+  data_type,
+  numeric_precision,
   numeric_scale
 FROM information_schema.columns
 WHERE table_name IN ('sale_items', 'purchase_items', 'inventory_movements', 'products')
@@ -75,6 +83,7 @@ EOF
 ```
 
 Resultado esperado:
+
 ```
 inventory_movements | quantity       | numeric | 12 | 3
 products           | minimum_stock  | numeric | 12 | 3
@@ -95,6 +104,7 @@ docker exec nombre-contenedor-postgres pg_dump -U postgres lapizpapeldb > backup
 ```
 
 Para restaurar si algo sale mal:
+
 ```bash
 docker exec -i nombre-contenedor-postgres psql -U postgres lapizpapeldb < backup_antes_decimales_YYYYMMDD_HHMMSS.sql
 ```

@@ -7,9 +7,9 @@
 // Ejemplo de respuesta del backend:
 const saleItem = {
   product_id: "123-abc",
-  quantity: 2.5,        // ← Puede ser entero (5) o decimal (2.5)
-  unit_price: 25.50,
-  total_price: 63.75
+  quantity: 2.5, // ← Puede ser entero (5) o decimal (2.5)
+  unit_price: 25.5,
+  total_price: 63.75,
 };
 
 // ============================================
@@ -27,11 +27,10 @@ export const formatQuantity = (quantity) => {
 };
 
 // Ejemplos:
-formatQuantity(5)      // "5"
-formatQuantity(2.5)    // "2.5"
-formatQuantity(1.250)  // "1.25"
-formatQuantity(0.333)  // "0.333"
-
+formatQuantity(5); // "5"
+formatQuantity(2.5); // "2.5"
+formatQuantity(1.25); // "1.25"
+formatQuantity(0.333); // "0.333"
 
 // Opción B: Mostrar con unidad de medida
 export const formatQuantityWithUnit = (quantity, unit) => {
@@ -40,24 +39,23 @@ export const formatQuantityWithUnit = (quantity, unit) => {
 };
 
 // Ejemplos:
-formatQuantityWithUnit(2.5, 'kg')      // "2.5 kg"
-formatQuantityWithUnit(5, 'unidades')  // "5 unidades"
-formatQuantityWithUnit(0.75, 'lt')     // "0.75 lt"
-
+formatQuantityWithUnit(2.5, "kg"); // "2.5 kg"
+formatQuantityWithUnit(5, "unidades"); // "5 unidades"
+formatQuantityWithUnit(0.75, "lt"); // "0.75 lt"
 
 // Opción C: Formateo contextual (por tipo de producto)
 export const formatQuantityByProductType = (quantity, product) => {
-  const unit = product.unit || 'unidad';
-  
+  const unit = product.unit || "unidad";
+
   // Productos que se venden al peso/volumen → mostrar decimales
-  const decimalUnits = ['kg', 'g', 'lt', 'ml', 'm', 'cm'];
-  
+  const decimalUnits = ["kg", "g", "lt", "ml", "m", "cm"];
+
   if (decimalUnits.includes(unit.toLowerCase())) {
-    return parseFloat(quantity.toFixed(3)) + ' ' + unit;
+    return parseFloat(quantity.toFixed(3)) + " " + unit;
   }
-  
+
   // Productos por unidad → redondear
-  return Math.round(quantity) + ' ' + unit;
+  return Math.round(quantity) + " " + unit;
 };
 
 // ============================================
@@ -66,23 +64,25 @@ export const formatQuantityByProductType = (quantity, product) => {
 
 // React / Vue / Angular - Ejemplo genérico
 const QuantityInput = ({ product, value, onChange }) => {
-  const unit = product.unit || 'unidad';
-  const isDecimalUnit = ['kg', 'g', 'lt', 'ml', 'm', 'cm'].includes(unit.toLowerCase());
-  
+  const unit = product.unit || "unidad";
+  const isDecimalUnit = ["kg", "g", "lt", "ml", "m", "cm"].includes(
+    unit.toLowerCase()
+  );
+
   return (
     <div className="quantity-input">
       <label>Cantidad ({unit})</label>
       <input
         type="number"
-        step={isDecimalUnit ? "0.001" : "1"}  // Decimales solo si es necesario
+        step={isDecimalUnit ? "0.001" : "1"} // Decimales solo si es necesario
         min="0.001"
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
         placeholder={isDecimalUnit ? "Ej: 2.5" : "Ej: 5"}
       />
       <small className="hint">
-        {isDecimalUnit 
-          ? "Puedes usar decimales (ej: 0.5, 1.250)" 
+        {isDecimalUnit
+          ? "Puedes usar decimales (ej: 0.5, 1.250)"
           : "Cantidad en unidades enteras"}
       </small>
     </div>
@@ -96,22 +96,22 @@ const QuantityInput = ({ product, value, onChange }) => {
 export const validateQuantity = (quantity) => {
   // Convertir a número
   const num = parseFloat(quantity);
-  
+
   // Validaciones
   if (isNaN(num)) {
     return { valid: false, error: "La cantidad debe ser un número" };
   }
-  
+
   if (num <= 0) {
     return { valid: false, error: "La cantidad debe ser mayor a 0" };
   }
-  
+
   // Verificar que no tenga más de 3 decimales
-  const decimalPart = quantity.toString().split('.')[1];
+  const decimalPart = quantity.toString().split(".")[1];
   if (decimalPart && decimalPart.length > 3) {
     return { valid: false, error: "Máximo 3 decimales permitidos" };
   }
-  
+
   return { valid: true, value: num };
 };
 
@@ -138,13 +138,13 @@ export const calculateItemTotal = (quantity, unitPrice) => {
 const SaleItemRow = ({ product, quantity, setQuantity }) => {
   const unitPrice = product.sale_price;
   const total = calculateItemTotal(quantity, unitPrice);
-  
+
   return (
     <tr>
       <td>{product.name}</td>
       <td>
-        <input 
-          type="number" 
+        <input
+          type="number"
           step="0.001"
           value={quantity}
           onChange={(e) => setQuantity(parseFloat(e.target.value))}
@@ -172,12 +172,10 @@ const SalesTable = ({ sales }) => {
         </tr>
       </thead>
       <tbody>
-        {sales.map(sale => (
+        {sales.map((sale) => (
           <tr key={sale.id}>
             <td>{sale.product.name}</td>
-            <td>
-              {formatQuantityWithUnit(sale.quantity, sale.product.unit)}
-            </td>
+            <td>{formatQuantityWithUnit(sale.quantity, sale.product.unit)}</td>
             <td>S/ {sale.unit_price.toFixed(2)}</td>
             <td>S/ {sale.total_price.toFixed(2)}</td>
           </tr>
@@ -195,23 +193,23 @@ const SalesTable = ({ sales }) => {
 const rice = {
   name: "Arroz Extra",
   unit: "kg",
-  sale_price: 3.50
+  sale_price: 3.5,
 };
 
-formatQuantity(2.5);           // "2.5"
-formatQuantityWithUnit(2.5, "kg");  // "2.5 kg"
-calculateItemTotal(2.5, 3.50); // 8.75
+formatQuantity(2.5); // "2.5"
+formatQuantityWithUnit(2.5, "kg"); // "2.5 kg"
+calculateItemTotal(2.5, 3.5); // 8.75
 
 // Ejemplo 2: Venta de cervezas (por unidad)
 const beer = {
   name: "Cerveza Cusqueña",
   unit: "unidad",
-  sale_price: 5.00
+  sale_price: 5.0,
 };
 
-formatQuantity(6);                    // "6"
-formatQuantityWithUnit(6, "unidad");  // "6 unidad"
-calculateItemTotal(6, 5.00);          // 30.00
+formatQuantity(6); // "6"
+formatQuantityWithUnit(6, "unidad"); // "6 unidad"
+calculateItemTotal(6, 5.0); // 30.00
 
 // ============================================
 // 8. TIPS DE UX/UI
@@ -248,19 +246,19 @@ const createSale = async (saleData) => {
     customer_id: saleData.customerId,
     subtotal: parseFloat(saleData.subtotal.toFixed(2)),
     total_amount: parseFloat(saleData.total.toFixed(2)),
-    items: saleData.items.map(item => ({
+    items: saleData.items.map((item) => ({
       product_id: item.productId,
-      quantity: parseFloat(item.quantity),  // ← Enviar como número
-      unit_price: parseFloat(item.unitPrice.toFixed(2))
-    }))
+      quantity: parseFloat(item.quantity), // ← Enviar como número
+      unit_price: parseFloat(item.unitPrice.toFixed(2)),
+    })),
   };
-  
-  const response = await fetch('/api/sales', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+
+  const response = await fetch("/api/sales", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
-  
+
   return response.json();
 };
 
@@ -268,17 +266,17 @@ const createSale = async (saleData) => {
 const exampleSaleData = {
   customerId: "abc-123",
   subtotal: 25.75,
-  total: 30.39,  // con IGV
+  total: 30.39, // con IGV
   items: [
     {
       productId: "prod-1",
-      quantity: 2.5,      // ← Decimal
-      unitPrice: 10.30
+      quantity: 2.5, // ← Decimal
+      unitPrice: 10.3,
     },
     {
       productId: "prod-2",
-      quantity: 5,        // ← Entero
-      unitPrice: 2.50
-    }
-  ]
+      quantity: 5, // ← Entero
+      unitPrice: 2.5,
+    },
+  ],
 };

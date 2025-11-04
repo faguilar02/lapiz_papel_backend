@@ -44,12 +44,12 @@ export class CreateProductDto {
   cost_price?: number = 0;
 
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
   stock_quantity?: number = 0;
 
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   @Min(0)
   minimum_stock?: number = 0;
 

@@ -146,7 +146,10 @@ export class SalesService {
 
       // Update product stock and create inventory movements
       for (const item of createSaleDto.items) {
-        await this.productsService.updateStock(item.product_id, -Number(item.quantity));
+        await this.productsService.updateStock(
+          item.product_id,
+          -Number(item.quantity),
+        );
         await this.inventoryService.create(
           {
             product_id: item.product_id,
@@ -324,7 +327,10 @@ export class SalesService {
 
       // Si la venta tenía productos despachados, devolver el stock
       for (const item of sale.items) {
-        await this.productsService.updateStock(item.product_id, Number(item.quantity));
+        await this.productsService.updateStock(
+          item.product_id,
+          Number(item.quantity),
+        );
         await this.inventoryService.create(
           {
             product_id: item.product_id,
@@ -679,7 +685,7 @@ export class SalesService {
                   id: item.product.id,
                   name: item.product.name,
                   sku: item.product.sku,
-		brand: item.product.brand,
+                  brand: item.product.brand,
                 }
               : null,
           })) || [],
@@ -1176,7 +1182,7 @@ export class SalesService {
       numero: index + 1,
       sku: item.product?.sku || item.product_code || 'N/A',
       descripcion: item.product?.name || item.description || 'Producto',
-	marca: item.product?.brand || null,
+      marca: item.product?.brand || null,
       unidad: item.product?.unit,
       cantidad: Number(item.quantity),
       precioUnitario: Number(item.unit_price),
@@ -1296,4 +1302,3 @@ export class SalesService {
     };
   }
 }
-

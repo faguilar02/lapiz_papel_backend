@@ -183,7 +183,7 @@ export class ProductsService {
     // Convertir stock_quantity a número para evitar concatenación
     const currentStock = Number(product.stock_quantity);
     const newStock = currentStock + quantity;
-    
+
     if (newStock < 0) {
       throw new BadRequestException('Insufficient stock');
     }
