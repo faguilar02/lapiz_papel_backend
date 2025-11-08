@@ -15,6 +15,11 @@ export class SearchProductsDto {
   brand?: string; // Filtrar por marca específica
 
   @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  low_stock?: boolean = false; // Filtrar solo productos con stock bajo o crítico
+
+  @IsOptional()
   @Type(() => Number)
   limit?: number = 20;
 

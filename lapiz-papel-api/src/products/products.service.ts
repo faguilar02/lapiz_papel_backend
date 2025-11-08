@@ -57,9 +57,10 @@ export class ProductsService {
   async findAll(
     searchDto: SearchProductsDto,
   ): Promise<PaginatedResponse<Product>> {
-    const { search, category_id, brand, limit = 10, offset = 0 } = searchDto;
+    const { search, category_id, brand, low_stock, limit = 10, offset = 0 } = searchDto;
 
     console.log('🔍 Products Service: findAll called with:', searchDto);
+    console.log('🔍 low_stock value:', low_stock, 'type:', typeof low_stock);
 
     const queryBuilder = this.productRepository
       .createQueryBuilder('product')
@@ -91,6 +92,13 @@ export class ProductsService {
     // Filtro por marca
     if (brand) {
       queryBuilder.andWhere('product.brand = :brand', { brand });
+    }
+
+    // Filtro por stock bajo (cuando stock_quantity <= minimum_stock)
+    if (low_stock) {
+      // Convertir a numérico para comparación correcta (NUMERIC se guarda como string)
+      queryBuilder.andWhere('CAST(product.stock_quantity AS DECIMAL) <= CAST(product.minimum_stock AS DECIMAL)');
+      console.log('📉 Aplicando filtro de bajo stock');
     }
 
     // NOTA: Ahora incluimos TODOS los productos, tanto activos como inactivos
