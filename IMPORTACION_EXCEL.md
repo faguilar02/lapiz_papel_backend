@@ -5,43 +5,68 @@
 **POST** `/api/products/import`
 
 ### Autenticación
+
 - Requiere token JWT
 - Solo usuarios con rol `ADMIN`
 
 ### Headers
+
 ```
 Authorization: Bearer <token>
 Content-Type: multipart/form-data
 ```
 
+### Características Principales
+
+✅ **Procesa TODAS las pestañas** del archivo Excel automáticamente  
+✅ **Mapeo automático** de columnas en español  
+✅ **Creación automática** de categorías si no existen  
+✅ **Precios de mayoreo opcionales** (solo crea los niveles con valores)  
+✅ **Reporte detallado** de éxitos y errores por fila y pestaña  
+✅ **Generación automática** de SKU si no se proporciona  
+✅ **Resiliente**: continúa procesando aunque algunas filas fallen
+
 ---
 
 ## 📊 Formato del Excel
 
-**IMPORTANTE**: El sistema acepta los nombres de columnas **tal como los tiene tu cliente**, en español con espacios y mayúsculas iniciales. También acepta nombres técnicos con guiones bajos.
+**IMPORTANTE**: El sistema acepta los nombres de columnas **exactamente como los tiene tu cliente**, en español con espacios y mayúsculas iniciales. También acepta nombres técnicos con guiones bajos.
+
+### ⚠️ Nombres Exactos que Detecta el Sistema
+
+El backend normaliza automáticamente (quita acentos, convierte a minúsculas) pero **debe coincidir el texto**:
+
+- ✅ "Nombre del producto" → detectado
+- ✅ "Nombre de producto" → detectado
+- ✅ "Nombre" → detectado
+- ✅ "Categoría" (con o sin acento) → detectado
+- ✅ "Mayoreo a partir de 3" → detectado
 
 ### Columnas Requeridas
-| Columna (Español) | Columna (Técnica) | Tipo | Requerido | Descripción |
-|-------------------|-------------------|------|-----------|-------------|
-| `Nombre de producto` o `Nombre` | `nombre` | Texto | ✅ Sí | Nombre del producto |
-| `Precio de venta` | `precio_venta` | Número | ✅ Sí | Precio de venta unitario |
+
+| Columna (Español)                | Columna (Técnica) | Tipo   | Requerido | Descripción              |
+| -------------------------------- | ----------------- | ------ | --------- | ------------------------ |
+| `Nombre del producto` o `Nombre` | `nombre`          | Texto  | ✅ Sí     | Nombre del producto      |
+| `Precio de venta`                | `precio_venta`    | Número | ✅ Sí     | Precio de venta unitario |
 
 ### Columnas Opcionales
-| Columna (Español) | Columna (Técnica) | Tipo | Descripción | Valor por Defecto |
-|-------------------|-------------------|------|-------------|-------------------|
-| `Sku` | `sku` | Texto | Código SKU único | Se genera automáticamente |
-| `Marca` | `marca` | Texto | Marca del producto | null |
-| `Categoria` | `categoria` | Texto | Nombre de la categoría (debe existir) | null |
-| `Unidad` | `unidad` | Texto | Unidad de medida | "unit" |
-| `Precio de compra` | `precio_compra` | Número | Precio de costo/compra | 0 |
-| `Cantidad de stock` | `cantidad_stock` | Número | Cantidad inicial en stock | 0 |
-| `Stock minimo` | `stock_minimo` | Número | Stock mínimo para alertas | 0 |
-| `Mayoreo a partir de 3` | `mayoreo_3` | Número | Precio total por 3 unidades | No se crea |
-| `Mayoreo a partir de 6` | `mayoreo_6` | Número | Precio total por 6 unidades | No se crea |
-| `Mayoreo a partir de 25` | `mayoreo_25` | Número | Precio total por 25 unidades | No se crea |
-| `Mayoreo a partir de 50` | `mayoreo_50` | Número | Precio total por 50 unidades | No se crea |
+
+| Columna (Español)        | Columna (Técnica) | Tipo   | Descripción                                   | Valor por Defecto                        |
+| ------------------------ | ----------------- | ------ | --------------------------------------------- | ---------------------------------------- |
+| `Sku`                    | `sku`             | Texto  | Código SKU único                              | Se genera automáticamente (CAT-PRO-0001) |
+| `Marca`                  | `marca`           | Texto  | Marca del producto                            | null                                     |
+| `Categoria`              | `categoria`       | Texto  | **Se crea automáticamente si no existe**      | null                                     |
+| `Unidad`                 | `unidad`          | Texto  | Unidad de medida (pieza, kg, litro, etc.)     | "unit"                                   |
+| `Precio de compra`       | `precio_compra`   | Número | Precio de costo/compra                        | 0                                        |
+| `Cantidad de stock`      | `cantidad_stock`  | Número | Cantidad inicial en stock (soporta decimales) | 0                                        |
+| `Stock minimo`           | `stock_minimo`    | Número | Stock mínimo para alertas (soporta decimales) | 0                                        |
+| `Mayoreo a partir de 3`  | `mayoreo_3`       | Número | **Precio total** por 3 unidades               | No se crea si está vacío                 |
+| `Mayoreo a partir de 6`  | `mayoreo_6`       | Número | **Precio total** por 6 unidades               | No se crea si está vacío                 |
+| `Mayoreo a partir de 25` | `mayoreo_25`      | Número | **Precio total** por 25 unidades              | No se crea si está vacío                 |
+| `Mayoreo a partir de 50` | `mayoreo_50`      | Número | **Precio total** por 50 unidades              | No se crea si está vacío                 |
 
 **✨ El sistema normaliza automáticamente los nombres**:
+
 - Convierte a minúsculas
 - Elimina acentos
 - Ignora espacios extras
@@ -53,44 +78,109 @@ Content-Type: multipart/form-data
 
 ### Hoja 1: "Productos" (Formato del Cliente)
 
-| Nombre de producto | Marca | Categoria | Unidad | Precio de venta | Precio de compra | Cantidad de stock | Stock minimo | Mayoreo a partir de 3 | Mayoreo a partir de 6 | Mayoreo a partir de 25 | Mayoreo a partir de 50 |
-|-------------------|-------|-----------|--------|-----------------|------------------|-------------------|--------------|-----------------------|-----------------------|------------------------|------------------------|
-| Cuaderno Profesional | Scribe | Papelería | pieza | 45.00 | 30.00 | 100 | 20 | 120.00 | 240.00 | 950.00 | 1800.00 |
-| Pluma BIC Cristal Azul | BIC | Papelería | pieza | 8.00 | 4.50 | 500 | 50 | 21.00 | 42.00 | | |
-| Pioner A4 2 anillos Fucsia | Norma | Carpetas | pieza | 85.00 | 55.00 | 50 | 10 | | 480.00 | 2000.00 | |
-| Resistol 850 | Resistol | Pegamentos | pieza | 35.00 | 22.00 | 75 | 15 | 99.00 | | | |
+| Nombre de producto         | Marca    | Categoria  | Unidad | Precio de venta | Precio de compra | Cantidad de stock | Stock minimo | Mayoreo a partir de 3 | Mayoreo a partir de 6 | Mayoreo a partir de 25 | Mayoreo a partir de 50 |
+| -------------------------- | -------- | ---------- | ------ | --------------- | ---------------- | ----------------- | ------------ | --------------------- | --------------------- | ---------------------- | ---------------------- |
+| Cuaderno Profesional       | Scribe   | Papelería  | pieza  | 45.00           | 30.00            | 100               | 20           | 120.00                | 240.00                | 950.00                 | 1800.00                |
+| Pluma BIC Cristal Azul     | BIC      | Papelería  | pieza  | 8.00            | 4.50             | 500               | 50           | 21.00                 | 42.00                 |                        |                        |
+| Pioner A4 2 anillos Fucsia | Norma    | Carpetas   | pieza  | 85.00           | 55.00            | 50                | 10           |                       | 480.00                | 2000.00                |                        |
+| Resistol 850               | Resistol | Pegamentos | pieza  | 35.00           | 22.00            | 75                | 15           | 99.00                 |                       |                        |                        |
 
 ### Formato Alternativo (También Aceptado)
 
 También puedes usar los nombres técnicos con guiones bajos:
 
-| nombre | marca | categoria | unidad | precio_venta | precio_compra | cantidad_stock | stock_minimo | mayoreo_3 | mayoreo_6 | mayoreo_25 | mayoreo_50 |
-|--------|-------|-----------|--------|--------------|---------------|----------------|--------------|-----------|-----------|------------|------------|
-| Cuaderno Profesional | Scribe | Papelería | pieza | 45.00 | 30.00 | 100 | 20 | 120.00 | 240.00 | 950.00 | 1800.00 |
+| nombre               | marca  | categoria | unidad | precio_venta | precio_compra | cantidad_stock | stock_minimo | mayoreo_3 | mayoreo_6 | mayoreo_25 | mayoreo_50 |
+| -------------------- | ------ | --------- | ------ | ------------ | ------------- | -------------- | ------------ | --------- | --------- | ---------- | ---------- |
+| Cuaderno Profesional | Scribe | Papelería | pieza  | 45.00        | 30.00         | 100            | 20           | 120.00    | 240.00    | 950.00     | 1800.00    |
 
 ### Notas Importantes:
+
 - ✅ Las columnas de mayoreo pueden estar vacías si el producto no tiene ese nivel de precio
 - ✅ El sistema **solo creará** precios de mayoreo para las columnas que tengan valores
-- ✅ La categoría debe existir previamente en el sistema (si no existe, se ignorará)
-- ✅ Si no se proporciona SKU, se generará automáticamente
-- ✅ Los valores numéricos pueden tener decimales (ej: 45.50)
+- ✅ **La categoría se crea automáticamente** si no existe en el sistema
+- ✅ Si no se proporciona SKU, se generará automáticamente con formato `CAT-PRO-0001`
+- ✅ Los valores numéricos pueden tener decimales (ej: 45.50, 0.5, 125.99)
+- ✅ Los precios de mayoreo son el **precio total del paquete**, no el precio unitario
+- ✅ Si una fila falla, las demás continúan procesándose
+
+---
+
+## 📚 Procesamiento de Múltiples Pestañas
+
+El sistema **procesa automáticamente TODAS las pestañas (sheets)** de tu archivo Excel.
+
+### Ejemplo de Excel con 3 Pestañas
+
+```
+📂 MisProductos.xlsx
+  ├── 📄 Papelería (50 productos)
+  ├── 📄 Librería (30 productos)
+  └── 📄 Útiles Escolares (75 productos)
+```
+
+**El sistema:**
+- ✅ Detecta las 3 pestañas automáticamente
+- ✅ Procesa cada una de forma secuencial
+- ✅ Registra de qué pestaña viene cada producto
+- ✅ Retorna `sheets_processed: 3` en la respuesta
+- ✅ Cada producto incluye el campo `"sheet"` con el nombre de la pestaña
+
+**Respuesta esperada:**
+```json
+{
+  "success": true,
+  "total_rows": 155,
+  "imported": 155,
+  "failed": 0,
+  "sheets_processed": 3,
+  "created_products": [
+    {
+      "row": 2,
+      "sheet": "Papelería",
+      "product_name": "Cuaderno Profesional",
+      "product_id": "...",
+      "bulk_prices_created": 4
+    },
+    {
+      "row": 2,
+      "sheet": "Librería",
+      "product_name": "Libro de Cuentos",
+      "product_id": "...",
+      "bulk_prices_created": 0
+    },
+    {
+      "row": 2,
+      "sheet": "Útiles Escolares",
+      "product_name": "Mochila Escolar",
+      "product_id": "...",
+      "bulk_prices_created": 2
+    }
+  ]
+}
+```
+
+**Ventajas:**
+- 🎯 Organiza tus productos por categorías en diferentes pestañas
+- 📊 Fácil seguimiento de qué pestaña generó cada producto
+- 🔄 Si falla una fila, las demás continúan sin problema
 
 ---
 
 ## 🔄 Request Example (Frontend)
 
 ### Usando FormData
+
 ```javascript
-const fileInput = document.getElementById('excelFile');
+const fileInput = document.getElementById("excelFile");
 const file = fileInput.files[0];
 
 const formData = new FormData();
-formData.append('file', file);
+formData.append("file", file);
 
-const response = await fetch('http://localhost:3000/api/products/import', {
-  method: 'POST',
+const response = await fetch("http://localhost:3000/api/products/import", {
+  method: "POST",
   headers: {
-    'Authorization': `Bearer ${token}`,
+    Authorization: `Bearer ${token}`,
   },
   body: formData,
 });
@@ -100,28 +190,29 @@ console.log(result);
 ```
 
 ### Usando Axios
+
 ```javascript
-import axios from 'axios';
+import axios from "axios";
 
 const handleImport = async (file) => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
   try {
     const response = await axios.post(
-      'http://localhost:3000/api/products/import',
+      "http://localhost:3000/api/products/import",
       formData,
       {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
         },
       }
     );
-    
-    console.log('Importación exitosa:', response.data);
+
+    console.log("Importación exitosa:", response.data);
   } catch (error) {
-    console.error('Error en importación:', error.response.data);
+    console.error("Error en importación:", error.response.data);
   }
 };
 ```
@@ -131,6 +222,7 @@ const handleImport = async (file) => {
 ## ✅ Response Example
 
 ### Importación Exitosa (200 OK)
+
 ```json
 {
   "success": true,
@@ -144,21 +236,25 @@ const handleImport = async (file) => {
       "product_name": "Cuaderno Profesional",
       "product_id": "550e8400-e29b-41d4-a716-446655440000",
       "bulk_prices_created": 4
-    },
+  "sheets_processed": 1,
+  "created_products": [
     {
       "row": 3,
+      "sheet": "Hoja1",
       "product_name": "Pluma BIC Cristal Azul",
       "product_id": "550e8400-e29b-41d4-a716-446655440001",
       "bulk_prices_created": 2
     },
     {
       "row": 4,
+      "sheet": "Hoja1",
       "product_name": "Pioner A4 2 anillos Fucsia",
       "product_id": "550e8400-e29b-41d4-a716-446655440002",
       "bulk_prices_created": 2
     },
     {
       "row": 5,
+      "sheet": "Hoja1",
       "product_name": "Resistol 850",
       "product_id": "550e8400-e29b-41d4-a716-446655440003",
       "bulk_prices_created": 1
@@ -167,6 +263,14 @@ const handleImport = async (file) => {
 }
 ```
 
+**Interpretación:**
+
+- `bulk_prices_created`: Cantidad de niveles de mayoreo creados (0-4 posibles)
+- Si `bulk_prices_created: 0` → el producto no tiene precios de mayoreo
+- Si `bulk_prices_created: 4` → tiene precios para 3, 6, 25 y 50 unidades
+
+````
+
 ### Importación Parcial (200 OK con errores)
 ```json
 {
@@ -174,14 +278,17 @@ const handleImport = async (file) => {
   "total_rows": 4,
   "imported": 2,
   "failed": 2,
+  "sheets_processed": 1,
   "errors": [
     {
       "row": 3,
-      "product_name": "Producto sin precio",
+      "sheet": "Hoja1",
+      "product_name": "Desconocido",
       "error": "Campos requeridos faltantes: nombre y precio_venta son obligatorios"
     },
     {
       "row": 5,
+      "sheet": "Hoja1",
       "product_name": "Producto Duplicado",
       "error": "Product SKU already exists"
     }
@@ -189,12 +296,14 @@ const handleImport = async (file) => {
   "created_products": [
     {
       "row": 2,
+      "sheet": "Hoja1",
       "product_name": "Cuaderno Profesional",
       "product_id": "550e8400-e29b-41d4-a716-446655440000",
       "bulk_prices_created": 4
     },
     {
       "row": 4,
+      "sheet": "Hoja1",
       "product_name": "Pluma BIC",
       "product_id": "550e8400-e29b-41d4-a716-446655440001",
       "bulk_prices_created": 0
@@ -203,22 +312,31 @@ const handleImport = async (file) => {
 }
 ```
 
+**Interpretación:**
+- `success: false` → Hubo al menos un error
+- Los productos que sí se pudieron crear aparecen en `created_products`
+- Los que fallaron aparecen en `errors` con el número de fila y motivo
+- Si `product_name: "Desconocido"` → la fila no tenía nombre o no se pudo leer`
+
 ---
 
 ## ⚠️ Validaciones y Errores
 
 ### Validaciones del Archivo
+
 - ❌ **400 Bad Request**: No se subió ningún archivo
 - ❌ **400 Bad Request**: Tipo de archivo inválido (solo .xls y .xlsx)
 - ❌ **400 Bad Request**: Archivo mayor a 5MB
 
 ### Errores por Fila
+
 - ❌ Campos requeridos faltantes (`nombre` o `precio_venta`)
 - ❌ SKU duplicado (si ya existe en la base de datos)
-- ❌ Categoría no encontrada (se ignora, pero el producto se crea sin categoría)
 - ❌ Valores numéricos inválidos
 
 ### Warnings (no detienen la importación)
+
+- ⚠️ **Categoría se crea automáticamente** si no existe (NUEVO)
 - ⚠️ No se puede crear precio de mayoreo duplicado para la misma cantidad
 
 ---
@@ -226,46 +344,72 @@ const handleImport = async (file) => {
 ## 🎯 Comportamiento Importante
 
 ### Generación Automática de SKU
+
 Si no se proporciona SKU, se genera automáticamente con el formato:
+
 ```
 [CAT]-[PRO]-[0000]
 ```
+
 - **CAT**: 3 primeras letras de la categoría (o "GEN" si no tiene)
 - **PRO**: 3 primeras letras del producto
 - **0000**: Número secuencial de 4 dígitos
 
 Ejemplo: `PAP-CUA-0001` (Papelería - Cuaderno - 0001)
 
+### ✨ Creación Automática de Categorías (NUEVO)
+
+- Si una categoría **NO existe** en la base de datos, **se crea automáticamente**
+- La categoría creada tendrá:
+  - `name`: El nombre exacto del Excel
+  - `description`: "Categoría importada desde Excel"
+  - `is_active`: true
+- Puedes ver en los logs del servidor mensajes como:
+  ```
+  📁 Creando nueva categoría: "Papelería"
+  ✅ Categoría creada con ID: abc-123-def
+  ```
+
 ### Precios de Mayoreo Opcionales
+
 - Solo se crean los precios de mayoreo que tengan valores en el Excel
 - Un producto puede tener 0, 1, 2, 3 o 4 niveles de mayoreo
 - Si una columna está vacía, null o con valor 0, NO se crea ese nivel
+- **Los precios son totales del paquete, no unitarios**
+  - Ejemplo: Si "Mayoreo a partir de 3" = 120, significa que 3 unidades cuestan $120 en total
 
 ### Manejo de Errores Resiliente
+
 - Si una fila falla, las demás continúan procesándose
 - El response incluye detalles de qué filas fallaron y por qué
 - Los productos creados exitosamente NO se revierten si otras filas fallan
+- Ideal para importaciones grandes donde algunos productos pueden tener errores
 
 ---
 
 ## 💡 Recomendaciones para el Frontend
 
 ### UI/UX Sugerida
+
 1. **Input File con validación**
+
    - Solo aceptar .xls y .xlsx
    - Mostrar tamaño del archivo
    - Validar tamaño máximo antes de enviar
 
 2. **Preview antes de importar (opcional)**
+
    - Leer el Excel en el frontend
    - Mostrar tabla con vista previa
    - Permitir confirmar o cancelar
 
 3. **Progress Indicator**
+
    - Loading spinner durante la importación
    - Mostrar mensaje "Procesando X productos..."
 
 4. **Resultados de la Importación**
+
    - Resumen: X de Y productos importados
    - Lista de productos creados exitosamente (verde)
    - Lista de errores con detalles (rojo)
@@ -274,7 +418,9 @@ Ejemplo: `PAP-CUA-0001` (Papelería - Cuaderno - 0001)
 5. **Manejo de Errores**
    ```javascript
    if (!result.success) {
-     showWarning(`${result.imported} productos importados, ${result.failed} fallaron`);
+     showWarning(
+       `${result.imported} productos importados, ${result.failed} fallaron`
+     );
      showErrorDetails(result.errors);
    } else {
      showSuccess(`¡${result.imported} productos importados exitosamente!`);
@@ -282,6 +428,7 @@ Ejemplo: `PAP-CUA-0001` (Papelería - Cuaderno - 0001)
    ```
 
 ### Ejemplo de Componente React
+
 ```jsx
 const ImportProducts = () => {
   const [file, setFile] = useState(null);
@@ -290,51 +437,53 @@ const ImportProducts = () => {
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
-    
+
     // Validar tipo
     const validTypes = [
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ];
-    
+
     if (!validTypes.includes(selectedFile.type)) {
-      alert('Solo se permiten archivos Excel (.xls, .xlsx)');
+      alert("Solo se permiten archivos Excel (.xls, .xlsx)");
       return;
     }
-    
+
     // Validar tamaño
     if (selectedFile.size > 5 * 1024 * 1024) {
-      alert('El archivo debe ser menor a 5MB');
+      alert("El archivo debe ser menor a 5MB");
       return;
     }
-    
+
     setFile(selectedFile);
   };
 
   const handleImport = async () => {
     if (!file) return;
-    
+
     setLoading(true);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     try {
-      const response = await axios.post('/api/products/import', formData, {
+      const response = await axios.post("/api/products/import", formData, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
         },
       });
-      
+
       setResult(response.data);
-      
+
       if (response.data.success) {
         alert(`¡${response.data.imported} productos importados exitosamente!`);
       } else {
-        alert(`${response.data.imported} productos importados, ${response.data.failed} fallaron`);
+        alert(
+          `${response.data.imported} productos importados, ${response.data.failed} fallaron`
+        );
       }
     } catch (error) {
-      alert('Error al importar: ' + error.message);
+      alert("Error al importar: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -343,19 +492,16 @@ const ImportProducts = () => {
   return (
     <div>
       <h2>Importar Productos desde Excel</h2>
-      
-      <input 
-        type="file" 
-        accept=".xls,.xlsx" 
+
+      <input
+        type="file"
+        accept=".xls,.xlsx"
         onChange={handleFileChange}
         disabled={loading}
       />
-      
-      <button 
-        onClick={handleImport} 
-        disabled={!file || loading}
-      >
-        {loading ? 'Importando...' : 'Importar'}
+
+      <button onClick={handleImport} disabled={!file || loading}>
+        {loading ? "Importando..." : "Importar"}
       </button>
 
       {result && (
@@ -364,7 +510,7 @@ const ImportProducts = () => {
           <p>Total: {result.total_rows}</p>
           <p>Importados: {result.imported}</p>
           <p>Fallidos: {result.failed}</p>
-          
+
           {result.errors.length > 0 && (
             <div>
               <h4>Errores:</h4>
@@ -398,6 +544,7 @@ O crear tu propio archivo Excel con las columnas mencionadas en la sección "For
 ## 🔍 Testing del Endpoint
 
 ### Con cURL
+
 ```bash
 curl -X POST http://localhost:3000/api/products/import \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -405,6 +552,7 @@ curl -X POST http://localhost:3000/api/products/import \
 ```
 
 ### Con Postman
+
 1. Método: POST
 2. URL: `http://localhost:3000/api/products/import`
 3. Headers: `Authorization: Bearer YOUR_TOKEN`
@@ -422,6 +570,9 @@ curl -X POST http://localhost:3000/api/products/import \
 ✅ **Escalable**: Puede procesar cientos de productos  
 ✅ **Seguro**: Solo usuarios ADMIN pueden importar  
 ✅ **Inteligente**: Genera SKUs automáticamente  
+✅ **Automático**: Crea categorías que no existen  
+✅ **Tolerante**: Acepta decimales en cantidades y stocks  
+✅ **Multilenguaje**: Mapea columnas en español e inglés
 
 ---
 

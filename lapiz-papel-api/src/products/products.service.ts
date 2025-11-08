@@ -621,17 +621,23 @@ export class ProductsService {
 
   /**
    * Importa productos masivamente desde un archivo Excel
+   * Procesa TODAS las pestañas del archivo
    */
-  async importProductsFromExcel(
-    buffer: Buffer,
-  ): Promise<{
+  async importProductsFromExcel(buffer: Buffer): Promise<{
     success: boolean;
     total_rows: number;
     imported: number;
     failed: number;
-    errors: Array<{ row: number; product_name: string; error: string }>;
+    sheets_processed: number;
+    errors: Array<{
+      row: number;
+      sheet: string;
+      product_name: string;
+      error: string;
+    }>;
     created_products: Array<{
       row: number;
+      sheet: string;
       product_name: string;
       product_id: string;
       bulk_prices_created: number;
@@ -641,89 +647,111 @@ export class ProductsService {
 
     // Leer el archivo Excel
     const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
 
-    // Convertir a JSON
-    const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: null });
+    console.log(
+      `📚 Excel tiene ${workbook.SheetNames.length} pestaña(s): ${workbook.SheetNames.join(', ')}`,
+    );
 
-    // Mapear nombres de columnas en español a nombres técnicos
-    const normalizeColumnName = (name: string): string => {
-      return name
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') // Remover acentos
-        .trim();
-    };
-
-    const columnMapping = {
-      'nombre del producto': 'nombre', // "Nombre del producto"
-      'nombre de producto': 'nombre',
-      nombre: 'nombre',
-      marca: 'marca',
-      categoria: 'categoria',
-      unidad: 'unidad',
-      'precio de venta': 'precio_venta',
-      precio_venta: 'precio_venta',
-      'precio de compra': 'precio_compra',
-      precio_compra: 'precio_compra',
-      'cantidad de stock': 'cantidad_stock',
-      cantidad_stock: 'cantidad_stock',
-      'stock minimo': 'stock_minimo',
-      stock_minimo: 'stock_minimo',
-      'mayoreo a partir de 3': 'mayoreo_3',
-      mayoreo_3: 'mayoreo_3',
-      'mayoreo a partir de 6': 'mayoreo_6',
-      mayoreo_6: 'mayoreo_6',
-      'mayoreo a partir de 25': 'mayoreo_25',
-      mayoreo_25: 'mayoreo_25',
-      'mayoreo a partir de 50': 'mayoreo_50',
-      mayoreo_50: 'mayoreo_50',
-      sku: 'sku',
-    };
-
-    // Log para debugging - ver qué columnas detecta el Excel
-    if (rawData.length > 0) {
-      const firstRow = rawData[0];
-      console.log('📊 Columnas detectadas en el Excel:');
-      Object.keys(firstRow).forEach((key) => {
-        const normalized = normalizeColumnName(key);
-        const mapped = columnMapping[normalized];
-        console.log(
-          `  - "${key}" → normalizado: "${normalized}" → mapeado a: "${mapped || 'NO MAPEADO'}"`,
-        );
-      });
-    }
-
-    // Normalizar los datos
-    const data = rawData.map((row) => {
-      const normalizedRow = {};
-      Object.keys(row).forEach((key) => {
-        const normalizedKey = normalizeColumnName(key);
-        const mappedKey = columnMapping[normalizedKey];
-        if (mappedKey) {
-          normalizedRow[mappedKey] = row[key];
-        }
-      });
-      return normalizedRow;
-    });
-
-    const errors: Array<{ row: number; product_name: string; error: string }> =
-      [];
+    const errors: Array<{
+      row: number;
+      sheet: string;
+      product_name: string;
+      error: string;
+    }> = [];
     const created_products: Array<{
       row: number;
+      sheet: string;
       product_name: string;
       product_id: string;
       bulk_prices_created: number;
     }> = [];
 
+    let totalRows = 0;
     let imported = 0;
     let failed = 0;
 
-    // Procesar cada fila
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      const rowNumber = i + 2; // +2 porque Excel empieza en 1 y hay header
+    // Procesar cada pestaña del Excel
+    for (const sheetName of workbook.SheetNames) {
+      console.log(`\n📄 Procesando pestaña: "${sheetName}"`);
+
+      const worksheet = workbook.Sheets[sheetName];
+
+      // Convertir a JSON
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: null });
+
+      if (rawData.length === 0) {
+        console.log(`⚠️  Pestaña "${sheetName}" está vacía, se omite`);
+        continue;
+      }
+
+      console.log(`   📊 ${rawData.length} filas encontradas`);
+      totalRows += rawData.length;
+
+      // Mapear nombres de columnas en español a nombres técnicos
+      const normalizeColumnName = (name: string): string => {
+        return name
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '') // Remover acentos
+          .trim();
+      };
+
+      const columnMapping = {
+        'nombre del producto': 'nombre', // "Nombre del producto"
+        'nombre de producto': 'nombre',
+        nombre: 'nombre',
+        marca: 'marca',
+        categoria: 'categoria',
+        unidad: 'unidad',
+        'precio de venta': 'precio_venta',
+        precio_venta: 'precio_venta',
+        'precio de compra': 'precio_compra',
+        precio_compra: 'precio_compra',
+        'cantidad de stock': 'cantidad_stock',
+        cantidad_stock: 'cantidad_stock',
+        'stock minimo': 'stock_minimo',
+        stock_minimo: 'stock_minimo',
+        'mayoreo a partir de 3': 'mayoreo_3',
+        mayoreo_3: 'mayoreo_3',
+        'mayoreo a partir de 6': 'mayoreo_6',
+        mayoreo_6: 'mayoreo_6',
+        'mayoreo a partir de 25': 'mayoreo_25',
+        mayoreo_25: 'mayoreo_25',
+        'mayoreo a partir de 50': 'mayoreo_50',
+        mayoreo_50: 'mayoreo_50',
+        sku: 'sku',
+      };
+
+      // Log para debugging - ver qué columnas detecta el Excel
+      if (rawData.length > 0) {
+        const firstRow = rawData[0];
+        console.log(`   � Columnas detectadas:`);
+        Object.keys(firstRow).forEach((key) => {
+          const normalized = normalizeColumnName(key);
+          const mapped = columnMapping[normalized];
+          console.log(
+            `      - "${key}" → "${mapped || 'NO MAPEADO'}"`,
+          );
+        });
+      }
+
+      // Normalizar los datos
+      const data = rawData.map((row) => {
+        const normalizedRow = {};
+        Object.keys(row).forEach((key) => {
+          const normalizedKey = normalizeColumnName(key);
+          const mappedKey = columnMapping[normalizedKey];
+          if (mappedKey) {
+            normalizedRow[mappedKey] = row[key];
+          }
+        });
+        return normalizedRow;
+      });
+
+      // Procesar cada fila de esta pestaña
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        const rowNumber = i + 2; // +2 porque Excel empieza en 1 y hay header
 
       try {
         // Validar campos requeridos
@@ -737,8 +765,9 @@ export class ProductsService {
         let categoryId = null;
         if (row.categoria && row.categoria.trim() !== '') {
           const categoryName = row.categoria.trim();
-          const categoryRepo = this.productRepository.manager.getRepository(Category);
-          
+          const categoryRepo =
+            this.productRepository.manager.getRepository(Category);
+
           let category = await categoryRepo.findOne({
             where: { name: categoryName },
           });
@@ -815,6 +844,7 @@ export class ProductsService {
 
         created_products.push({
           row: rowNumber,
+          sheet: sheetName,
           product_name: product.name,
           product_id: product.id,
           bulk_prices_created: bulkPricesCreated,
@@ -825,17 +855,28 @@ export class ProductsService {
         failed++;
         errors.push({
           row: rowNumber,
+          sheet: sheetName,
           product_name: row.nombre || 'Desconocido',
           error: error.message,
         });
       }
     }
 
+    console.log(
+      `   ✅ Pestaña "${sheetName}": ${imported - (imported - rawData.length + data.length - failed)} productos importados`,
+    );
+  } // Fin del loop de pestañas
+
+    console.log(
+      `\n🎉 Importación completada: ${imported} productos de ${workbook.SheetNames.length} pestaña(s)`,
+    );
+
     return {
       success: failed === 0,
-      total_rows: data.length,
+      total_rows: totalRows,
       imported,
       failed,
+      sheets_processed: workbook.SheetNames.length,
       errors,
       created_products,
     };

@@ -19,13 +19,16 @@ export class ImportProductsResponseDto {
   total_rows: number;
   imported: number;
   failed: number;
+  sheets_processed: number;
   errors: Array<{
     row: number;
+    sheet: string;
     product_name: string;
     error: string;
   }>;
   created_products: Array<{
     row: number;
+    sheet: string;
     product_name: string;
     product_id: string;
     bulk_prices_created: number;
