@@ -68,16 +68,24 @@ export class ProductsService {
       .addSelect('product.is_active')
       .orderBy('product.created_at', 'DESC');
 
-    // Filtro por búsqueda general (por palabras clave)
+    // Filtro por búsqueda general (por palabras clave) - insensible a tildes/acentos
     if (search) {
       // Dividir la búsqueda en palabras individuales
       const keywords = search.trim().split(/\s+/); // Separa por espacios
 
-      // Crear una condición AND para cada palabra
+      // Crear una condición AND para cada palabra con búsqueda insensible a acentos
       keywords.forEach((keyword, index) => {
+        // Normalizar el término de búsqueda removiendo acentos
+        const normalizedKeyword = this.removeAccents(keyword);
+        
         queryBuilder.andWhere(
-          `(product.name ILIKE :keyword${index} OR product.sku ILIKE :keyword${index} OR product.brand ILIKE :keyword${index} OR category.name ILIKE :keyword${index})`,
-          { [`keyword${index}`]: `%${keyword}%` },
+          `(
+            unaccent(product.name) ILIKE unaccent(:keyword${index}) OR 
+            unaccent(product.sku) ILIKE unaccent(:keyword${index}) OR 
+            unaccent(product.brand) ILIKE unaccent(:keyword${index}) OR 
+            unaccent(category.name) ILIKE unaccent(:keyword${index})
+          )`,
+          { [`keyword${index}`]: `%${normalizedKeyword}%` },
         );
       });
     }
@@ -1036,5 +1044,15 @@ export class ProductsService {
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '') // Solo letras y números
       .substring(0, 3);
+  }
+
+  /**
+   * Remueve acentos/tildes de un texto para búsquedas insensibles a acentos
+   * Ejemplo: "cartón" -> "carton", "José" -> "Jose"
+   */
+  private removeAccents(text: string): string {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // Remover marcas diacríticas (acentos, tildes)
   }
 }
