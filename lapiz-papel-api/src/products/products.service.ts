@@ -71,7 +71,7 @@ export class ProductsService {
     if (search) {
       // Dividir la búsqueda en palabras individuales
       const keywords = search.trim().split(/\s+/); // Separa por espacios
-      
+
       // Crear una condición AND para cada palabra
       keywords.forEach((keyword, index) => {
         queryBuilder.andWhere(
@@ -213,7 +213,7 @@ export class ProductsService {
     // Búsqueda por palabras clave
     if (query && query.trim()) {
       const keywords = query.trim().split(/\s+/);
-      
+
       keywords.forEach((keyword, index) => {
         queryBuilder.andWhere(
           `(product.name ILIKE :keyword${index} OR product.sku ILIKE :keyword${index} OR product.brand ILIKE :keyword${index} OR category.name ILIKE :keyword${index})`,
@@ -221,7 +221,7 @@ export class ProductsService {
         );
       });
     }
-    
+
     queryBuilder.orderBy('product.created_at', 'DESC');
 
     const [data, total] = await queryBuilder
@@ -616,6 +616,228 @@ export class ProductsService {
 
     return {
       totalPrice: product.cost_price * quantity,
+    };
+  }
+
+  /**
+   * Importa productos masivamente desde un archivo Excel
+   */
+  async importProductsFromExcel(
+    buffer: Buffer,
+  ): Promise<{
+    success: boolean;
+    total_rows: number;
+    imported: number;
+    failed: number;
+    errors: Array<{ row: number; product_name: string; error: string }>;
+    created_products: Array<{
+      row: number;
+      product_name: string;
+      product_id: string;
+      bulk_prices_created: number;
+    }>;
+  }> {
+    const XLSX = require('xlsx');
+
+    // Leer el archivo Excel
+    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+
+    // Convertir a JSON
+    const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: null });
+
+    // Mapear nombres de columnas en español a nombres técnicos
+    const normalizeColumnName = (name: string): string => {
+      return name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remover acentos
+        .trim();
+    };
+
+    const columnMapping = {
+      'nombre del producto': 'nombre', // "Nombre del producto"
+      'nombre de producto': 'nombre',
+      nombre: 'nombre',
+      marca: 'marca',
+      categoria: 'categoria',
+      unidad: 'unidad',
+      'precio de venta': 'precio_venta',
+      precio_venta: 'precio_venta',
+      'precio de compra': 'precio_compra',
+      precio_compra: 'precio_compra',
+      'cantidad de stock': 'cantidad_stock',
+      cantidad_stock: 'cantidad_stock',
+      'stock minimo': 'stock_minimo',
+      stock_minimo: 'stock_minimo',
+      'mayoreo a partir de 3': 'mayoreo_3',
+      mayoreo_3: 'mayoreo_3',
+      'mayoreo a partir de 6': 'mayoreo_6',
+      mayoreo_6: 'mayoreo_6',
+      'mayoreo a partir de 25': 'mayoreo_25',
+      mayoreo_25: 'mayoreo_25',
+      'mayoreo a partir de 50': 'mayoreo_50',
+      mayoreo_50: 'mayoreo_50',
+      sku: 'sku',
+    };
+
+    // Log para debugging - ver qué columnas detecta el Excel
+    if (rawData.length > 0) {
+      const firstRow = rawData[0];
+      console.log('📊 Columnas detectadas en el Excel:');
+      Object.keys(firstRow).forEach((key) => {
+        const normalized = normalizeColumnName(key);
+        const mapped = columnMapping[normalized];
+        console.log(
+          `  - "${key}" → normalizado: "${normalized}" → mapeado a: "${mapped || 'NO MAPEADO'}"`,
+        );
+      });
+    }
+
+    // Normalizar los datos
+    const data = rawData.map((row) => {
+      const normalizedRow = {};
+      Object.keys(row).forEach((key) => {
+        const normalizedKey = normalizeColumnName(key);
+        const mappedKey = columnMapping[normalizedKey];
+        if (mappedKey) {
+          normalizedRow[mappedKey] = row[key];
+        }
+      });
+      return normalizedRow;
+    });
+
+    const errors: Array<{ row: number; product_name: string; error: string }> =
+      [];
+    const created_products: Array<{
+      row: number;
+      product_name: string;
+      product_id: string;
+      bulk_prices_created: number;
+    }> = [];
+
+    let imported = 0;
+    let failed = 0;
+
+    // Procesar cada fila
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowNumber = i + 2; // +2 porque Excel empieza en 1 y hay header
+
+      try {
+        // Validar campos requeridos
+        if (!row.nombre || !row.precio_venta) {
+          throw new Error(
+            'Campos requeridos faltantes: nombre y precio_venta son obligatorios',
+          );
+        }
+
+        // Buscar o crear categoría si viene
+        let categoryId = null;
+        if (row.categoria && row.categoria.trim() !== '') {
+          const categoryName = row.categoria.trim();
+          const categoryRepo = this.productRepository.manager.getRepository(Category);
+          
+          let category = await categoryRepo.findOne({
+            where: { name: categoryName },
+          });
+
+          // Si no existe, crearla
+          if (!category) {
+            console.log(`📁 Creando nueva categoría: "${categoryName}"`);
+            category = categoryRepo.create({
+              name: categoryName,
+              description: `Categoría importada desde Excel`,
+              is_active: true,
+            });
+            category = await categoryRepo.save(category);
+            console.log(`✅ Categoría creada con ID: ${category.id}`);
+          }
+
+          categoryId = category.id;
+        }
+
+        // Preparar datos del producto
+        const productData: CreateProductDto = {
+          name: row.nombre.trim(),
+          sku: row.sku && row.sku.trim() !== '' ? row.sku.trim() : undefined,
+          brand: row.marca && row.marca.trim() !== '' ? row.marca.trim() : null,
+          category_id: categoryId,
+          unit: row.unidad || 'unit',
+          sale_price: Number(row.precio_venta),
+          cost_price: row.precio_compra ? Number(row.precio_compra) : 0,
+          stock_quantity:
+            row.cantidad_stock !== null && row.cantidad_stock !== undefined
+              ? Number(row.cantidad_stock)
+              : 0,
+          minimum_stock:
+            row.stock_minimo !== null && row.stock_minimo !== undefined
+              ? Number(row.stock_minimo)
+              : 0,
+        };
+
+        // Crear el producto
+        const product = await this.create(productData);
+        let bulkPricesCreated = 0;
+
+        // Crear precios de mayoreo solo si existen valores
+        const bulkPriceConfigs = [
+          { key: 'mayoreo_3', min_quantity: 3 },
+          { key: 'mayoreo_6', min_quantity: 6 },
+          { key: 'mayoreo_25', min_quantity: 25 },
+          { key: 'mayoreo_50', min_quantity: 50 },
+        ];
+
+        for (const config of bulkPriceConfigs) {
+          const value = row[config.key];
+          if (
+            value !== null &&
+            value !== undefined &&
+            value !== '' &&
+            !isNaN(Number(value)) &&
+            Number(value) > 0
+          ) {
+            try {
+              await this.addBulkPrice(product.id, {
+                min_quantity: config.min_quantity,
+                sale_bundle_total: String(Number(value)),
+                pricing_mode: 'bundle_exact',
+              });
+              bulkPricesCreated++;
+            } catch (bulkError) {
+              console.warn(
+                `Warning: Could not create bulk price for row ${rowNumber}, quantity ${config.min_quantity}: ${bulkError.message}`,
+              );
+            }
+          }
+        }
+
+        created_products.push({
+          row: rowNumber,
+          product_name: product.name,
+          product_id: product.id,
+          bulk_prices_created: bulkPricesCreated,
+        });
+
+        imported++;
+      } catch (error) {
+        failed++;
+        errors.push({
+          row: rowNumber,
+          product_name: row.nombre || 'Desconocido',
+          error: error.message,
+        });
+      }
+    }
+
+    return {
+      success: failed === 0,
+      total_rows: data.length,
+      imported,
+      failed,
+      errors,
+      created_products,
     };
   }
 

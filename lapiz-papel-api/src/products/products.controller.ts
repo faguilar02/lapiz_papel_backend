@@ -38,6 +38,34 @@ export class ProductsController {
     return this.productsService.create(createProductDto);
   }
 
+  @Post('import')
+  @Auth(UserRole.ADMIN)
+  @UseInterceptors(FileInterceptor('file'))
+  async importProducts(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    // Validar que sea un archivo Excel
+    const validMimeTypes = [
+      'application/vnd.ms-excel', // .xls
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+    ];
+
+    if (!validMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        'Invalid file type. Only Excel files (.xls, .xlsx) are allowed',
+      );
+    }
+
+    // Validar tamaño (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('File size must be less than 5MB');
+    }
+
+    return this.productsService.importProductsFromExcel(file.buffer);
+  }
+
   @Get()
   @Auth()
   findAll(@Query() searchDto: SearchProductsDto) {
