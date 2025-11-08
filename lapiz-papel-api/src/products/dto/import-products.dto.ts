@@ -31,6 +31,8 @@ export class ImportProductsResponseDto {
     sheet: string;
     product_name: string;
     product_id: string;
+    action: 'created' | 'updated';
     bulk_prices_created: number;
+    bulk_prices_updated: number;
   }>;
 }

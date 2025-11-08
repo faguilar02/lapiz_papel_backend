@@ -60,10 +60,13 @@ El backend normaliza automáticamente (quita acentos, convierte a minúsculas) p
 | `Precio de compra`       | `precio_compra`   | Número | Precio de costo/compra                        | 0                                        |
 | `Cantidad de stock`      | `cantidad_stock`  | Número | Cantidad inicial en stock (soporta decimales) | 0                                        |
 | `Stock minimo`           | `stock_minimo`    | Número | Stock mínimo para alertas (soporta decimales) | 0                                        |
-| `Mayoreo a partir de 3`  | `mayoreo_3`       | Número | **Precio total** por 3 unidades               | No se crea si está vacío                 |
-| `Mayoreo a partir de 6`  | `mayoreo_6`       | Número | **Precio total** por 6 unidades               | No se crea si está vacío                 |
-| `Mayoreo a partir de 25` | `mayoreo_25`      | Número | **Precio total** por 25 unidades              | No se crea si está vacío                 |
-| `Mayoreo a partir de 50` | `mayoreo_50`      | Número | **Precio total** por 50 unidades              | No se crea si está vacío                 |
+| `Mayoreo a partir de X`  | `mayoreo_X`       | Número | **Precio total** por X unidades ✨ **DINÁMICO** | No se crea si está vacío                 |
+
+**🎯 Mayoreo Dinámico:** Puedes agregar columnas de mayoreo para **cualquier cantidad**:
+- `Mayoreo a partir de 3`, `Mayoreo a partir de 6`, `Mayoreo a partir de 25`, `Mayoreo a partir de 50`
+- `Mayoreo a partir de 100`, `Mayoreo a partir de 200`, `Mayoreo a partir de 500` ✅
+- También acepta: `Mayoreo 100`, `mayoreo_100` (sin "a partir de")
+- El sistema detecta automáticamente el número y crea el precio correspondiente
 
 **✨ El sistema normaliza automáticamente los nombres**:
 
@@ -102,6 +105,59 @@ También puedes usar los nombres técnicos con guiones bajos:
 - ✅ Los valores numéricos pueden tener decimales (ej: 45.50, 0.5, 125.99)
 - ✅ Los precios de mayoreo son el **precio total del paquete**, no el precio unitario
 - ✅ Si una fila falla, las demás continúan procesándose
+
+---
+
+## 🔄 Actualización de Productos Existentes
+
+**El sistema detecta automáticamente productos duplicados** y los actualiza en lugar de crear copias.
+
+### ¿Cómo detecta duplicados?
+
+Busca por: **Nombre del producto + Marca** (case-insensitive)
+
+### Comportamiento:
+
+**Si el producto YA EXISTE:**
+- ✅ **Actualiza** precio de venta, precio de compra, stock, categoría, unidad
+- ✅ **Actualiza** precios de mayoreo existentes si vienen en el Excel
+- ✅ **Agrega** nuevos precios de mayoreo sin borrar los existentes
+- ✅ Retorna `"action": "updated"` en la respuesta
+
+**Si el producto NO EXISTE:**
+- ✅ **Crea** un nuevo producto con SKU autogenerado
+- ✅ **Crea** todos los precios de mayoreo indicados
+- ✅ Retorna `"action": "created"` en la respuesta
+
+### Ejemplo práctico:
+
+**Primera importación (Lunes):**
+```
+Excel: 50 productos con precios normales
+Resultado: 50 productos creados
+```
+
+**Segunda importación (Viernes - Promoción):**
+```
+Excel: Los mismos 50 productos con precios rebajados + 10 productos nuevos
+Resultado: 
+  - 50 productos actualizados (action: "updated")
+  - 10 productos nuevos creados (action: "created")
+  - Total en DB: 60 productos (no 110 duplicados ✅)
+```
+
+**Tercera importación (Lunes siguiente):**
+```
+Excel: Los 60 productos, precios normales de vuelta
+Resultado: 60 productos actualizados con precios originales
+```
+
+### Ventajas:
+
+- 🎯 Puedes usar el Excel como "fuente de verdad" y re-importar cuando quieras
+- 🔄 Actualiza precios masivamente (Black Friday, cambios de temporada)
+- 🧹 Mantiene la base de datos limpia (sin duplicados)
+- 📊 Agrega nuevos niveles de mayoreo sin tocar los existentes
 
 ---
 
@@ -229,35 +285,44 @@ const handleImport = async (file) => {
   "total_rows": 4,
   "imported": 4,
   "failed": 0,
+  "sheets_processed": 1,
   "errors": [],
   "created_products": [
     {
       "row": 2,
+      "sheet": "Hoja1",
       "product_name": "Cuaderno Profesional",
       "product_id": "550e8400-e29b-41d4-a716-446655440000",
-      "bulk_prices_created": 4
-  "sheets_processed": 1,
-  "created_products": [
+      "action": "created",
+      "bulk_prices_created": 4,
+      "bulk_prices_updated": 0
+    },
     {
       "row": 3,
       "sheet": "Hoja1",
       "product_name": "Pluma BIC Cristal Azul",
       "product_id": "550e8400-e29b-41d4-a716-446655440001",
-      "bulk_prices_created": 2
+      "action": "created",
+      "bulk_prices_created": 2,
+      "bulk_prices_updated": 0
     },
     {
       "row": 4,
       "sheet": "Hoja1",
       "product_name": "Pioner A4 2 anillos Fucsia",
       "product_id": "550e8400-e29b-41d4-a716-446655440002",
-      "bulk_prices_created": 2
+      "action": "created",
+      "bulk_prices_created": 2,
+      "bulk_prices_updated": 0
     },
     {
       "row": 5,
       "sheet": "Hoja1",
       "product_name": "Resistol 850",
       "product_id": "550e8400-e29b-41d4-a716-446655440003",
-      "bulk_prices_created": 1
+      "action": "created",
+      "bulk_prices_created": 1,
+      "bulk_prices_updated": 0
     }
   ]
 }
@@ -265,9 +330,10 @@ const handleImport = async (file) => {
 
 **Interpretación:**
 
-- `bulk_prices_created`: Cantidad de niveles de mayoreo creados (0-4 posibles)
-- Si `bulk_prices_created: 0` → el producto no tiene precios de mayoreo
-- Si `bulk_prices_created: 4` → tiene precios para 3, 6, 25 y 50 unidades
+- `action`: `"created"` (nuevo) o `"updated"` (actualizado)
+- `bulk_prices_created`: Nuevos niveles de mayoreo creados
+- `bulk_prices_updated`: Niveles de mayoreo actualizados
+- Si `bulk_prices_created: 0` y `bulk_prices_updated: 0` → el producto no tiene precios de mayoreo
 
 ````
 
@@ -299,14 +365,18 @@ const handleImport = async (file) => {
       "sheet": "Hoja1",
       "product_name": "Cuaderno Profesional",
       "product_id": "550e8400-e29b-41d4-a716-446655440000",
-      "bulk_prices_created": 4
+      "action": "created",
+      "bulk_prices_created": 4,
+      "bulk_prices_updated": 0
     },
     {
       "row": 4,
       "sheet": "Hoja1",
       "product_name": "Pluma BIC",
       "product_id": "550e8400-e29b-41d4-a716-446655440001",
-      "bulk_prices_created": 0
+      "action": "updated",
+      "bulk_prices_created": 0,
+      "bulk_prices_updated": 2
     }
   ]
 }
@@ -314,9 +384,44 @@ const handleImport = async (file) => {
 
 **Interpretación:**
 - `success: false` → Hubo al menos un error
-- Los productos que sí se pudieron crear aparecen en `created_products`
+- Los productos que sí se pudieron crear/actualizar aparecen en `created_products`
 - Los que fallaron aparecen en `errors` con el número de fila y motivo
-- Si `product_name: "Desconocido"` → la fila no tenía nombre o no se pudo leer`
+- Si `product_name: "Desconocido"` → la fila no tenía nombre o no se pudo leer
+- `action: "updated"` → El producto ya existía y se actualizó
+- `bulk_prices_updated: 2` → Se actualizaron 2 precios de mayoreo existentes
+
+````
+
+### Ejemplo con Mayoreo Dinámico (100 unidades)
+
+```json
+{
+  "success": true,
+  "total_rows": 1,
+  "imported": 1,
+  "failed": 0,
+  "sheets_processed": 1,
+  "errors": [],
+  "created_products": [
+    {
+      "row": 2,
+      "sheet": "Hoja1",
+      "product_name": "Papel Bond Resma 500 hojas",
+      "product_id": "550e8400-e29b-41d4-a716-446655440005",
+      "action": "created",
+      "bulk_prices_created": 5,
+      "bulk_prices_updated": 0
+    }
+  ]
+}
+```
+
+**Excel utilizado:**
+| Nombre del producto | Mayoreo a partir de 3 | Mayoreo a partir de 6 | Mayoreo a partir de 25 | Mayoreo a partir de 100 | Mayoreo a partir de 500 |
+|---|---|---|---|---|---|
+| Papel Bond Resma 500 hojas | 280.00 | 550.00 | 2200.00 | 8500.00 | 40000.00 |
+
+✨ **El sistema detectó automáticamente la columna "Mayoreo a partir de 100" y "Mayoreo a partir de 500"** y creó los precios correspondientes.
 
 ---
 
