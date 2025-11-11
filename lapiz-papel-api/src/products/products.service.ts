@@ -57,7 +57,14 @@ export class ProductsService {
   async findAll(
     searchDto: SearchProductsDto,
   ): Promise<PaginatedResponse<Product>> {
-    const { search, category_id, brand, low_stock, limit = 10, offset = 0 } = searchDto;
+    const {
+      search,
+      category_id,
+      brand,
+      low_stock,
+      limit = 10,
+      offset = 0,
+    } = searchDto;
 
     console.log('🔍 Products Service: findAll called with:', searchDto);
     console.log('🔍 low_stock value:', low_stock, 'type:', typeof low_stock);
@@ -77,7 +84,7 @@ export class ProductsService {
       keywords.forEach((keyword, index) => {
         // Normalizar el término de búsqueda removiendo acentos
         const normalizedKeyword = this.removeAccents(keyword);
-        
+
         queryBuilder.andWhere(
           `(
             unaccent(product.name) ILIKE unaccent(:keyword${index}) OR 
@@ -105,7 +112,9 @@ export class ProductsService {
     // Filtro por stock bajo (cuando stock_quantity <= minimum_stock)
     if (low_stock) {
       // Convertir a numérico para comparación correcta (NUMERIC se guarda como string)
-      queryBuilder.andWhere('CAST(product.stock_quantity AS DECIMAL) <= CAST(product.minimum_stock AS DECIMAL)');
+      queryBuilder.andWhere(
+        'CAST(product.stock_quantity AS DECIMAL) <= CAST(product.minimum_stock AS DECIMAL)',
+      );
       console.log('📉 Aplicando filtro de bajo stock');
     }
 
@@ -665,7 +674,9 @@ export class ProductsService {
     const workbook = XLSX.read(buffer, { type: 'buffer' });
 
     console.log(
-      `📚 Excel tiene ${workbook.SheetNames.length} pestaña(s): ${workbook.SheetNames.join(', ')}`,
+      `📚 Excel tiene ${
+        workbook.SheetNames.length
+      } pestaña(s): ${workbook.SheetNames.join(', ')}`,
     );
 
     const errors: Array<{
@@ -747,9 +758,7 @@ export class ProductsService {
         Object.keys(firstRow).forEach((key) => {
           const normalized = normalizeColumnName(key);
           const mapped = columnMapping[normalized];
-          console.log(
-            `      - "${key}" → "${mapped || 'NO MAPEADO'}"`,
-          );
+          console.log(`      - "${key}" → "${mapped || 'NO MAPEADO'}"`);
         });
       }
 
@@ -761,17 +770,21 @@ export class ProductsService {
         Object.keys(row).forEach((key) => {
           const normalizedKey = normalizeColumnName(key);
           const mappedKey = columnMapping[normalizedKey];
-          
+
           if (mappedKey) {
             normalizedRow[mappedKey] = row[key];
           } else {
             // Detectar columnas de mayoreo dinámicas: "mayoreo a partir de X" o "mayoreo X" o "mayoreo_X"
-            const mayoreoMatch = normalizedKey.match(/mayoreo\s*(?:a\s*partir\s*de\s*)?(\d+)/);
+            const mayoreoMatch = normalizedKey.match(
+              /mayoreo\s*(?:a\s*partir\s*de\s*)?(\d+)/,
+            );
             if (mayoreoMatch) {
               const quantity = parseInt(mayoreoMatch[1], 10);
               if (quantity > 0) {
                 dynamicMayoreo[`mayoreo_${quantity}`] = row[key];
-                console.log(`   🔍 Detectada columna dinámica de mayoreo: "${key}" → cantidad ${quantity}`);
+                console.log(
+                  `   🔍 Detectada columna dinámica de mayoreo: "${key}" → cantidad ${quantity}`,
+                );
               }
             }
           }
@@ -786,189 +799,204 @@ export class ProductsService {
         const row = data[i];
         const rowNumber = i + 2; // +2 porque Excel empieza en 1 y hay header
 
-      try {
-        // Validar campos requeridos
-        if (!row.nombre || !row.precio_venta) {
-          throw new Error(
-            'Campos requeridos faltantes: nombre y precio_venta son obligatorios',
-          );
-        }
-
-        // Buscar o crear categoría si viene
-        let categoryId = null;
-        if (row.categoria && row.categoria.trim() !== '') {
-          const categoryName = row.categoria.trim();
-          const categoryRepo =
-            this.productRepository.manager.getRepository(Category);
-
-          let category = await categoryRepo.findOne({
-            where: { name: categoryName },
-          });
-
-          // Si no existe, crearla
-          if (!category) {
-            console.log(`📁 Creando nueva categoría: "${categoryName}"`);
-            category = categoryRepo.create({
-              name: categoryName,
-              description: `Categoría importada desde Excel`,
-              is_active: true,
-            });
-            category = await categoryRepo.save(category);
-            console.log(`✅ Categoría creada con ID: ${category.id}`);
+        try {
+          // Validar campos requeridos
+          if (!row.nombre || !row.precio_venta) {
+            throw new Error(
+              'Campos requeridos faltantes: nombre y precio_venta son obligatorios',
+            );
           }
 
-          categoryId = category.id;
-        }
+          // Buscar o crear categoría si viene
+          let categoryId = null;
+          if (row.categoria && row.categoria.trim() !== '') {
+            const categoryName = row.categoria.trim();
+            const categoryRepo =
+              this.productRepository.manager.getRepository(Category);
 
-        // Buscar producto existente por nombre + marca (case-insensitive)
-        const productName = row.nombre.trim();
-        const productBrand = row.marca && row.marca.trim() !== '' ? row.marca.trim() : null;
-        
-        let existingProduct = null;
-        if (productBrand) {
-          existingProduct = await this.productRepository.findOne({
-            where: {
-              name: productName,
-              brand: productBrand,
-            },
-          });
-        } else {
-          // Si no tiene marca, buscar solo por nombre
-          existingProduct = await this.productRepository.findOne({
-            where: {
-              name: productName,
-              brand: null,
-            },
-          });
-        }
+            let category = await categoryRepo.findOne({
+              where: { name: categoryName },
+            });
 
-        let product: Product;
-        let action: 'created' | 'updated' = 'created';
-        let bulkPricesCreated = 0;
-        let bulkPricesUpdated = 0;
-
-        if (existingProduct) {
-          // Actualizar producto existente
-          console.log(`🔄 Actualizando producto existente: "${productName}" (ID: ${existingProduct.id})`);
-          
-          existingProduct.brand = productBrand;
-          existingProduct.category_id = categoryId;
-          existingProduct.unit = row.unidad || 'unit';
-          existingProduct.sale_price = String(Number(row.precio_venta));
-          existingProduct.cost_price = row.precio_compra ? String(Number(row.precio_compra)) : '0';
-          existingProduct.stock_quantity = 
-            row.cantidad_stock !== null && row.cantidad_stock !== undefined
-              ? String(Number(row.cantidad_stock))
-              : '0';
-          existingProduct.minimum_stock =
-            row.stock_minimo !== null && row.stock_minimo !== undefined
-              ? String(Number(row.stock_minimo))
-              : '0';
-
-          product = await this.productRepository.save(existingProduct);
-          action = 'updated';
-        } else {
-          // Crear nuevo producto
-          console.log(`✨ Creando nuevo producto: "${productName}"`);
-          
-          const productData: CreateProductDto = {
-            name: productName,
-            sku: row.sku && row.sku.trim() !== '' ? row.sku.trim() : undefined,
-            brand: productBrand,
-            category_id: categoryId,
-            unit: row.unidad || 'unit',
-            sale_price: Number(row.precio_venta),
-            cost_price: row.precio_compra ? Number(row.precio_compra) : 0,
-            stock_quantity:
-              row.cantidad_stock !== null && row.cantidad_stock !== undefined
-                ? Number(row.cantidad_stock)
-                : 0,
-            minimum_stock:
-              row.stock_minimo !== null && row.stock_minimo !== undefined
-                ? Number(row.stock_minimo)
-                : 0,
-          };
-
-          product = await this.create(productData);
-          action = 'created';
-        }
-
-        // Procesar precios de mayoreo dinámicamente (detecta cualquier columna mayoreo_X)
-        const mayoreoKeys = Object.keys(row).filter(key => key.startsWith('mayoreo_'));
-        
-        for (const key of mayoreoKeys) {
-          const minQuantityMatch = key.match(/mayoreo_(\d+)/);
-          if (!minQuantityMatch) continue;
-
-          const minQuantity = parseInt(minQuantityMatch[1], 10);
-          const value = row[key];
-
-          if (
-            value !== null &&
-            value !== undefined &&
-            value !== '' &&
-            !isNaN(Number(value)) &&
-            Number(value) > 0
-          ) {
-            try {
-              // Verificar si ya existe un bulk price para esta cantidad
-              const existingBulkPrice = await this.bulkPriceRepository.findOne({
-                where: {
-                  product_id: product.id,
-                  min_quantity: minQuantity,
-                },
+            // Si no existe, crearla
+            if (!category) {
+              console.log(`📁 Creando nueva categoría: "${categoryName}"`);
+              category = categoryRepo.create({
+                name: categoryName,
+                description: `Categoría importada desde Excel`,
+                is_active: true,
               });
+              category = await categoryRepo.save(category);
+              console.log(`✅ Categoría creada con ID: ${category.id}`);
+            }
 
-              if (existingBulkPrice) {
-                // Actualizar precio existente
-                existingBulkPrice.sale_bundle_total = String(Number(value));
-                await this.bulkPriceRepository.save(existingBulkPrice);
-                bulkPricesUpdated++;
-                console.log(`   ♻️ Actualizado mayoreo existente para cantidad ${minQuantity}`);
-              } else {
-                // Crear nuevo bulk price
-                await this.addBulkPrice(product.id, {
-                  min_quantity: minQuantity,
-                  sale_bundle_total: String(Number(value)),
-                  pricing_mode: 'bundle_exact',
-                });
-                bulkPricesCreated++;
-                console.log(`   ➕ Creado nuevo mayoreo para cantidad ${minQuantity}`);
+            categoryId = category.id;
+          }
+
+          // Buscar producto existente por nombre + marca (case-insensitive)
+          const productName = row.nombre.trim();
+          const productBrand =
+            row.marca && row.marca.trim() !== '' ? row.marca.trim() : null;
+
+          let existingProduct = null;
+          if (productBrand) {
+            existingProduct = await this.productRepository.findOne({
+              where: {
+                name: productName,
+                brand: productBrand,
+              },
+            });
+          } else {
+            // Si no tiene marca, buscar solo por nombre
+            existingProduct = await this.productRepository.findOne({
+              where: {
+                name: productName,
+                brand: null,
+              },
+            });
+          }
+
+          let product: Product;
+          let action: 'created' | 'updated' = 'created';
+          let bulkPricesCreated = 0;
+          let bulkPricesUpdated = 0;
+
+          if (existingProduct) {
+            // Actualizar producto existente
+            console.log(
+              `🔄 Actualizando producto existente: "${productName}" (ID: ${existingProduct.id})`,
+            );
+
+            existingProduct.brand = productBrand;
+            existingProduct.category_id = categoryId;
+            existingProduct.unit = row.unidad || 'unit';
+            existingProduct.sale_price = String(Number(row.precio_venta));
+            existingProduct.cost_price = row.precio_compra
+              ? String(Number(row.precio_compra))
+              : '0';
+            existingProduct.stock_quantity =
+              row.cantidad_stock !== null && row.cantidad_stock !== undefined
+                ? String(Number(row.cantidad_stock))
+                : '0';
+            existingProduct.minimum_stock =
+              row.stock_minimo !== null && row.stock_minimo !== undefined
+                ? String(Number(row.stock_minimo))
+                : '0';
+
+            product = await this.productRepository.save(existingProduct);
+            action = 'updated';
+          } else {
+            // Crear nuevo producto
+            console.log(`✨ Creando nuevo producto: "${productName}"`);
+
+            const productData: CreateProductDto = {
+              name: productName,
+              sku:
+                row.sku && row.sku.trim() !== '' ? row.sku.trim() : undefined,
+              brand: productBrand,
+              category_id: categoryId,
+              unit: row.unidad || 'unit',
+              sale_price: Number(row.precio_venta),
+              cost_price: row.precio_compra ? Number(row.precio_compra) : 0,
+              stock_quantity:
+                row.cantidad_stock !== null && row.cantidad_stock !== undefined
+                  ? Number(row.cantidad_stock)
+                  : 0,
+              minimum_stock:
+                row.stock_minimo !== null && row.stock_minimo !== undefined
+                  ? Number(row.stock_minimo)
+                  : 0,
+            };
+
+            product = await this.create(productData);
+            action = 'created';
+          }
+
+          // Procesar precios de mayoreo dinámicamente (detecta cualquier columna mayoreo_X)
+          const mayoreoKeys = Object.keys(row).filter((key) =>
+            key.startsWith('mayoreo_'),
+          );
+
+          for (const key of mayoreoKeys) {
+            const minQuantityMatch = key.match(/mayoreo_(\d+)/);
+            if (!minQuantityMatch) continue;
+
+            const minQuantity = parseInt(minQuantityMatch[1], 10);
+            const value = row[key];
+
+            if (
+              value !== null &&
+              value !== undefined &&
+              value !== '' &&
+              !isNaN(Number(value)) &&
+              Number(value) > 0
+            ) {
+              try {
+                // Verificar si ya existe un bulk price para esta cantidad
+                const existingBulkPrice =
+                  await this.bulkPriceRepository.findOne({
+                    where: {
+                      product_id: product.id,
+                      min_quantity: minQuantity,
+                    },
+                  });
+
+                if (existingBulkPrice) {
+                  // Actualizar precio existente
+                  existingBulkPrice.sale_bundle_total = String(Number(value));
+                  await this.bulkPriceRepository.save(existingBulkPrice);
+                  bulkPricesUpdated++;
+                  console.log(
+                    `   ♻️ Actualizado mayoreo existente para cantidad ${minQuantity}`,
+                  );
+                } else {
+                  // Crear nuevo bulk price
+                  await this.addBulkPrice(product.id, {
+                    min_quantity: minQuantity,
+                    sale_bundle_total: String(Number(value)),
+                    pricing_mode: 'bundle_exact',
+                  });
+                  bulkPricesCreated++;
+                  console.log(
+                    `   ➕ Creado nuevo mayoreo para cantidad ${minQuantity}`,
+                  );
+                }
+              } catch (bulkError) {
+                console.warn(
+                  `⚠️ No se pudo procesar mayoreo para cantidad ${minQuantity}: ${bulkError.message}`,
+                );
               }
-            } catch (bulkError) {
-              console.warn(
-                `⚠️ No se pudo procesar mayoreo para cantidad ${minQuantity}: ${bulkError.message}`,
-              );
             }
           }
+
+          created_products.push({
+            row: rowNumber,
+            sheet: sheetName,
+            product_name: product.name,
+            product_id: product.id,
+            action: action,
+            bulk_prices_created: bulkPricesCreated,
+            bulk_prices_updated: bulkPricesUpdated,
+          });
+
+          imported++;
+        } catch (error) {
+          failed++;
+          errors.push({
+            row: rowNumber,
+            sheet: sheetName,
+            product_name: row.nombre || 'Desconocido',
+            error: error.message,
+          });
         }
-
-        created_products.push({
-          row: rowNumber,
-          sheet: sheetName,
-          product_name: product.name,
-          product_id: product.id,
-          action: action,
-          bulk_prices_created: bulkPricesCreated,
-          bulk_prices_updated: bulkPricesUpdated,
-        });
-
-        imported++;
-      } catch (error) {
-        failed++;
-        errors.push({
-          row: rowNumber,
-          sheet: sheetName,
-          product_name: row.nombre || 'Desconocido',
-          error: error.message,
-        });
       }
-    }
 
-    console.log(
-      `   ✅ Pestaña "${sheetName}": ${imported - (imported - rawData.length + data.length - failed)} productos importados`,
-    );
-  } // Fin del loop de pestañas
+      console.log(
+        `   ✅ Pestaña "${sheetName}": ${
+          imported - (imported - rawData.length + data.length - failed)
+        } productos importados`,
+      );
+    } // Fin del loop de pestañas
 
     console.log(
       `\n🎉 Importación completada: ${imported} productos de ${workbook.SheetNames.length} pestaña(s)`,
@@ -1051,8 +1079,6 @@ export class ProductsService {
    * Ejemplo: "cartón" -> "carton", "José" -> "Jose"
    */
   private removeAccents(text: string): string {
-    return text
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, ''); // Remover marcas diacríticas (acentos, tildes)
+    return text.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Remover marcas diacríticas (acentos, tildes)
   }
 }

@@ -51,18 +51,19 @@ El backend normaliza automáticamente (quita acentos, convierte a minúsculas) p
 
 ### Columnas Opcionales
 
-| Columna (Español)        | Columna (Técnica) | Tipo   | Descripción                                   | Valor por Defecto                        |
-| ------------------------ | ----------------- | ------ | --------------------------------------------- | ---------------------------------------- |
-| `Sku`                    | `sku`             | Texto  | Código SKU único                              | Se genera automáticamente (CAT-PRO-0001) |
-| `Marca`                  | `marca`           | Texto  | Marca del producto                            | null                                     |
-| `Categoria`              | `categoria`       | Texto  | **Se crea automáticamente si no existe**      | null                                     |
-| `Unidad`                 | `unidad`          | Texto  | Unidad de medida (pieza, kg, litro, etc.)     | "unit"                                   |
-| `Precio de compra`       | `precio_compra`   | Número | Precio de costo/compra                        | 0                                        |
-| `Cantidad de stock`      | `cantidad_stock`  | Número | Cantidad inicial en stock (soporta decimales) | 0                                        |
-| `Stock minimo`           | `stock_minimo`    | Número | Stock mínimo para alertas (soporta decimales) | 0                                        |
-| `Mayoreo a partir de X`  | `mayoreo_X`       | Número | **Precio total** por X unidades ✨ **DINÁMICO** | No se crea si está vacío                 |
+| Columna (Español)       | Columna (Técnica) | Tipo   | Descripción                                     | Valor por Defecto                        |
+| ----------------------- | ----------------- | ------ | ----------------------------------------------- | ---------------------------------------- |
+| `Sku`                   | `sku`             | Texto  | Código SKU único                                | Se genera automáticamente (CAT-PRO-0001) |
+| `Marca`                 | `marca`           | Texto  | Marca del producto                              | null                                     |
+| `Categoria`             | `categoria`       | Texto  | **Se crea automáticamente si no existe**        | null                                     |
+| `Unidad`                | `unidad`          | Texto  | Unidad de medida (pieza, kg, litro, etc.)       | "unit"                                   |
+| `Precio de compra`      | `precio_compra`   | Número | Precio de costo/compra                          | 0                                        |
+| `Cantidad de stock`     | `cantidad_stock`  | Número | Cantidad inicial en stock (soporta decimales)   | 0                                        |
+| `Stock minimo`          | `stock_minimo`    | Número | Stock mínimo para alertas (soporta decimales)   | 0                                        |
+| `Mayoreo a partir de X` | `mayoreo_X`       | Número | **Precio total** por X unidades ✨ **DINÁMICO** | No se crea si está vacío                 |
 
 **🎯 Mayoreo Dinámico:** Puedes agregar columnas de mayoreo para **cualquier cantidad**:
+
 - `Mayoreo a partir de 3`, `Mayoreo a partir de 6`, `Mayoreo a partir de 25`, `Mayoreo a partir de 50`
 - `Mayoreo a partir de 100`, `Mayoreo a partir de 200`, `Mayoreo a partir de 500` ✅
 - También acepta: `Mayoreo 100`, `mayoreo_100` (sin "a partir de")
@@ -119,12 +120,14 @@ Busca por: **Nombre del producto + Marca** (case-insensitive)
 ### Comportamiento:
 
 **Si el producto YA EXISTE:**
+
 - ✅ **Actualiza** precio de venta, precio de compra, stock, categoría, unidad
 - ✅ **Actualiza** precios de mayoreo existentes si vienen en el Excel
 - ✅ **Agrega** nuevos precios de mayoreo sin borrar los existentes
 - ✅ Retorna `"action": "updated"` en la respuesta
 
 **Si el producto NO EXISTE:**
+
 - ✅ **Crea** un nuevo producto con SKU autogenerado
 - ✅ **Crea** todos los precios de mayoreo indicados
 - ✅ Retorna `"action": "created"` en la respuesta
@@ -132,21 +135,24 @@ Busca por: **Nombre del producto + Marca** (case-insensitive)
 ### Ejemplo práctico:
 
 **Primera importación (Lunes):**
+
 ```
 Excel: 50 productos con precios normales
 Resultado: 50 productos creados
 ```
 
 **Segunda importación (Viernes - Promoción):**
+
 ```
 Excel: Los mismos 50 productos con precios rebajados + 10 productos nuevos
-Resultado: 
+Resultado:
   - 50 productos actualizados (action: "updated")
   - 10 productos nuevos creados (action: "created")
   - Total en DB: 60 productos (no 110 duplicados ✅)
 ```
 
 **Tercera importación (Lunes siguiente):**
+
 ```
 Excel: Los 60 productos, precios normales de vuelta
 Resultado: 60 productos actualizados con precios originales
@@ -175,6 +181,7 @@ El sistema **procesa automáticamente TODAS las pestañas (sheets)** de tu archi
 ```
 
 **El sistema:**
+
 - ✅ Detecta las 3 pestañas automáticamente
 - ✅ Procesa cada una de forma secuencial
 - ✅ Registra de qué pestaña viene cada producto
@@ -182,6 +189,7 @@ El sistema **procesa automáticamente TODAS las pestañas (sheets)** de tu archi
 - ✅ Cada producto incluye el campo `"sheet"` con el nombre de la pestaña
 
 **Respuesta esperada:**
+
 ```json
 {
   "success": true,
@@ -216,6 +224,7 @@ El sistema **procesa automáticamente TODAS las pestañas (sheets)** de tu archi
 ```
 
 **Ventajas:**
+
 - 🎯 Organiza tus productos por categorías en diferentes pestañas
 - 📊 Fácil seguimiento de qué pestaña generó cada producto
 - 🔄 Si falla una fila, las demás continúan sin problema

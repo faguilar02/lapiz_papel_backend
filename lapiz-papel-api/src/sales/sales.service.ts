@@ -1256,10 +1256,10 @@ export class SalesService {
       response.notas = sale.notes || null;
       response.totalEditadoManualmente = manuallyEdited;
     } else {
-      // ✅ Si es Boleta o Factura: mostrar subtotal, IGV y total
+      // ✅ Si es Boleta o Factura: mostrar subtotal, IGV y totalVenta (consistente)
       response.subtotal = Number(Number(sale.subtotal).toFixed(2));
       response.igv = Number(Number(sale.igv_amount).toFixed(2));
-      response.total = Number(Number(sale.total_amount).toFixed(2));
+      response.totalVenta = Number(Number(sale.total_amount).toFixed(2));
       response.descuento = Number(Number(sale.discount_amount || 0).toFixed(2));
       response.notas = sale.notes || null;
       response.totalEditadoManualmente = manuallyEdited;
