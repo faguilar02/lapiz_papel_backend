@@ -43,6 +43,11 @@ export class ProductsService {
         );
       }
 
+      // Normalizar marca para evitar duplicados
+      if (createProductDto.brand) {
+        createProductDto.brand = this.normalizeBrand(createProductDto.brand);
+      }
+
       const product = this.productRepository.create(createProductDto);
       return await this.productRepository.save(product);
     } catch (error) {
@@ -180,6 +185,11 @@ export class ProductsService {
     const product = await this.findOne(id);
 
     try {
+      // Normalizar marca si viene en el DTO
+      if (updateProductDto.brand) {
+        updateProductDto.brand = this.normalizeBrand(updateProductDto.brand);
+      }
+      
       Object.assign(product, updateProductDto);
       return await this.productRepository.save(product);
     } catch (error) {
@@ -836,7 +846,9 @@ export class ProductsService {
           // Buscar producto existente por nombre + marca (case-insensitive)
           const productName = row.nombre.trim();
           const productBrand =
-            row.marca && row.marca.trim() !== '' ? row.marca.trim() : null;
+            row.marca && row.marca.trim() !== ''
+              ? this.normalizeBrand(row.marca.trim())
+              : null;
 
           let existingProduct = null;
           if (productBrand) {
@@ -1072,6 +1084,20 @@ export class ProductsService {
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, '') // Solo letras y números
       .substring(0, 3);
+  }
+
+  /**
+   * Normaliza el nombre de una marca para evitar duplicados
+   * Convierte a mayúsculas, remueve espacios extra y caracteres especiales
+   * Ejemplo: "  hp  " -> "HP", "Coca-Cola" -> "COCA-COLA"
+   */
+  private normalizeBrand(brand: string): string {
+    if (!brand) return null;
+    
+    return brand
+      .trim()                                    // Remover espacios al inicio/final
+      .replace(/\s+/g, ' ')                      // Normalizar espacios múltiples a uno solo
+      .toUpperCase();                            // Convertir a mayúsculas
   }
 
   /**
