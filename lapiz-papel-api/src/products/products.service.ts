@@ -189,7 +189,7 @@ export class ProductsService {
       if (updateProductDto.brand) {
         updateProductDto.brand = this.normalizeBrand(updateProductDto.brand);
       }
-      
+
       Object.assign(product, updateProductDto);
       return await this.productRepository.save(product);
     } catch (error) {
@@ -1093,11 +1093,11 @@ export class ProductsService {
    */
   private normalizeBrand(brand: string): string {
     if (!brand) return null;
-    
+
     return brand
-      .trim()                                    // Remover espacios al inicio/final
-      .replace(/\s+/g, ' ')                      // Normalizar espacios múltiples a uno solo
-      .toUpperCase();                            // Convertir a mayúsculas
+      .trim() // Remover espacios al inicio/final
+      .replace(/\s+/g, ' ') // Normalizar espacios múltiples a uno solo
+      .toUpperCase(); // Convertir a mayúsculas
   }
 
   /**
