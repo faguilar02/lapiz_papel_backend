@@ -17,10 +17,10 @@ export class CreateSupplierDto {
   @MaxLength(255)
   contact_person?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @Matches(/^\d{11}$/, { message: 'RUC must be exactly 11 digits' })
-  ruc: string;
+  ruc?: string;
 
   @IsOptional()
   @IsString()

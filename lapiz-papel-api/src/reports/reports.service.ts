@@ -3,7 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Sale } from '../sales/entities/sale.entity';
 import { SaleItem } from '../sales/entities/sale-item.entity';
-import { Purchase, PurchaseStatus } from '../purchases/entities/purchase.entity';
+import {
+  Purchase,
+  PurchaseStatus,
+} from '../purchases/entities/purchase.entity';
 import { PurchaseItem } from '../purchases/entities/purchase-item.entity';
 import { ReportsQueryDto } from './dto/reports-query.dto';
 
@@ -131,7 +134,9 @@ export class ReportsService {
         endDate,
       })
       .andWhere('purchase.is_active = :isActive', { isActive: true })
-      .andWhere('purchase.status = :status', { status: PurchaseStatus.COMPLETED })
+      .andWhere('purchase.status = :status', {
+        status: PurchaseStatus.COMPLETED,
+      })
       .getRawOne();
 
     // Purchases by supplier
@@ -147,7 +152,9 @@ export class ReportsService {
         startDate,
         endDate,
       })
-      .andWhere('purchase.status = :status', { status: PurchaseStatus.COMPLETED })
+      .andWhere('purchase.status = :status', {
+        status: PurchaseStatus.COMPLETED,
+      })
       .groupBy('supplier.id')
       .addGroupBy('supplier.name')
       .orderBy('total_amount', 'DESC')
