@@ -4,6 +4,7 @@ import {
   IsOptional,
   MaxLength,
   Matches,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateSupplierDto {
@@ -19,7 +20,11 @@ export class CreateSupplierDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d{11}$/, { message: 'RUC must be exactly 11 digits' })
+  @Matches(/^\d{11}$/, {
+    message: 'RUC must be exactly 11 digits',
+    each: false,
+  })
+  @ValidateIf((o) => o.ruc !== undefined && o.ruc !== null && o.ruc !== '')
   ruc?: string;
 
   @IsOptional()
