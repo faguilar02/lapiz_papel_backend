@@ -19,7 +19,7 @@ export class Supplier {
   @Column({ type: 'text', nullable: true })
   contact_person: string;
 
-  @Column({ type: 'varchar', length: 11, unique: true })
+  @Column({ type: 'varchar', length: 11, unique: true, nullable: true })
   ruc: string;
 
   @Column({ type: 'text', nullable: true })
